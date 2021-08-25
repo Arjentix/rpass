@@ -1,7 +1,7 @@
 mod storage;
 
 use std::net::{TcpListener, TcpStream};
-use std::io::Write;
+use std::io::{Write, Error, ErrorKind};
 use std::borrow::Cow;
 use std::sync::{Arc, RwLock};
 use storage::Storage;
@@ -14,7 +14,10 @@ fn handle_client<T: Write>(mut stream: T, storage: Arc<RwLock<Storage>>) -> std:
 }
 
 fn main() -> std::io::Result<()> {
-    let storage = Arc::new(RwLock::new(Storage::from_path("~/.rpass_storage")));
+    let home_dir = dirs::home_dir().ok_or(
+        Error::new(ErrorKind::NotFound, "Can't open home directory"))?;
+    let path = home_dir.join(".rpass_storage");
+    let storage = Arc::new(RwLock::new(Storage::from_path(path)));
 
     let listener = TcpListener::bind("127.0.0.1:3747")?;
 

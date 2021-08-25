@@ -7,3 +7,4 @@ edition = "2018"
 
 [dependencies]
 crossbeam-utils = "0.8.5"
+dirs = "3.0.1"
