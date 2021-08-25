@@ -1,7 +1,8 @@
 use std::net::TcpListener;
 use std::io::Write;
-use std::thread::spawn;
 use std::borrow::Cow;
+
+use jod_thread::spawn; // To join thread on drop
 
 fn handle_client<T: Write>(mut stream: T) -> std::io::Result<()> {
     stream.write_all("Hello from rpass server!".as_bytes())
@@ -22,10 +23,6 @@ fn main() -> std::io::Result<()> {
         thread_handles.push(
             spawn(move || handle_client(stream))
         );
-    }
-
-    for handle in thread_handles {
-        handle.join().unwrap()?;
     }
 
     Ok(())
