@@ -1,6 +1,6 @@
 mod storage;
 
-use std::net::TcpListener;
+use std::net::{TcpListener, TcpStream};
 use std::io::Write;
 use std::borrow::Cow;
 use std::sync::{Arc, RwLock};
@@ -25,11 +25,7 @@ fn main() -> std::io::Result<()> {
             }
 
             let stream = stream_res.unwrap();
-            let addr = match stream.peer_addr() {
-                Ok(peer_addr) => Cow::from(peer_addr.to_string()),
-                Err(_) => Cow::from("unknown")
-            };
-            println!("Connected with {}", addr);
+            log_connection(&stream);
 
             let storage_clone = storage.clone();
             spawner.spawn(move |_| handle_client(stream, storage_clone));
@@ -37,4 +33,13 @@ fn main() -> std::io::Result<()> {
     }).unwrap();
 
     Ok(())
+}
+
+/// Logs stream peer address to the stdout
+fn log_connection(stream: &TcpStream) {
+    let addr = match stream.peer_addr() {
+        Ok(peer_addr) => Cow::from(peer_addr.to_string()),
+        Err(_) => Cow::from("unknown")
+    };
+    println!("Connected with {}", addr);
 }
