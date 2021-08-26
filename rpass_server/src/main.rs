@@ -47,10 +47,7 @@ fn log_connection(stream: &TcpStream) {
 fn handle_client<S: Write + Read>(mut stream: S, _storage: Arc<RwLock<Storage>>,
         request_dispatcher: Arc<RwLock<RequestDispatcher>>)
         -> std::io::Result<()> {
-    const BUF_SIZE: usize = 512;
-    let mut raw_buf = vec![0u8; BUF_SIZE];
-    stream.read(&mut raw_buf)?;
-    let request = match String::from_utf8(raw_buf) {
+    let request = match String::from_utf8(read_raw_request(&mut stream)?) {
         Ok(str) => str,
         Err(_) => return stream.write_all(
             "Error: request should be in UTF-8 encoded form".as_bytes())
@@ -61,4 +58,12 @@ fn handle_client<S: Write + Read>(mut stream: S, _storage: Arc<RwLock<Storage>>,
         String::from("Error: invalid request"));
 
     stream.write_all(response.as_bytes())
+}
+
+/// Reads 512 bytes from reader
+fn read_raw_request<R: Read>(reader: &mut R) -> std::io::Result<Vec<u8>> {
+    const BUF_SIZE: usize = 512;
+    let mut raw_buf = vec![0u8; BUF_SIZE];
+    reader.read(&mut raw_buf)?;
+    Ok(raw_buf)
 }
