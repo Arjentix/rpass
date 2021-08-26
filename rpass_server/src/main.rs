@@ -1,4 +1,5 @@
 mod storage;
+mod request_dispatcher;
 
 use std::net::{TcpListener, TcpStream};
 use std::io::{Write, Error, ErrorKind};
@@ -6,7 +7,8 @@ use std::borrow::Cow;
 use std::sync::{Arc, RwLock};
 use storage::Storage;
 
-fn handle_client<T: Write>(mut stream: T, storage: Arc<RwLock<Storage>>) -> std::io::Result<()> {
+fn handle_client<T: Write>(mut stream: T, storage: Arc<RwLock<Storage>>)
+        -> std::io::Result<()> {
     stream.write_all("Hello from rpass server!".as_bytes())?;
     let mut storage_write = storage.write().unwrap();
     Ok(())
