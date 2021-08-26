@@ -38,11 +38,10 @@ fn main() -> std::io::Result<()> {
 
     crossbeam_utils::thread::scope(|spawner| {
         for stream_res in listener.incoming() {
-            if let Err(_) = stream_res {
-                break;
-            }
-
-            let stream = stream_res.unwrap();
+            let stream = match stream_res {
+                Ok(connection) => connection,
+                Err(_) => break
+            };
             log_connection(&stream);
 
             let storage_clone = storage.clone();
