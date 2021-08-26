@@ -9,7 +9,6 @@ use storage::Storage;
 fn handle_client<T: Write>(mut stream: T, storage: Arc<RwLock<Storage>>) -> std::io::Result<()> {
     stream.write_all("Hello from rpass server!".as_bytes())?;
     let mut storage_write = storage.write().unwrap();
-    storage_write.edit();
     Ok(())
 }
 
