@@ -6,11 +6,13 @@ use std::io::{Write, Error, ErrorKind};
 use std::borrow::Cow;
 use std::sync::{Arc, RwLock};
 use storage::Storage;
+use request_dispatcher::RequestDispatcher;
 
-fn handle_client<T: Write>(mut stream: T, storage: Arc<RwLock<Storage>>)
+fn handle_client<T: Write>(mut stream: T, storage: Arc<RwLock<Storage>>,
+        _request_dispatcher: Arc<RwLock<RequestDispatcher>>)
         -> std::io::Result<()> {
     stream.write_all("Hello from rpass server!".as_bytes())?;
-    let mut storage_write = storage.write().unwrap();
+    let mut _storage_write = storage.write().unwrap();
     Ok(())
 }
 
@@ -19,6 +21,7 @@ fn main() -> std::io::Result<()> {
         Error::new(ErrorKind::NotFound, "Can't open home directory"))?;
     let path = home_dir.join(".rpass_storage");
     let storage = Arc::new(RwLock::new(Storage::from_path(path)));
+    let request_dispatcher = Arc::new(RwLock::new(RequestDispatcher::default()));
 
     let listener = TcpListener::bind("127.0.0.1:3747")?;
 
@@ -32,7 +35,9 @@ fn main() -> std::io::Result<()> {
             log_connection(&stream);
 
             let storage_clone = storage.clone();
-            spawner.spawn(move |_| handle_client(stream, storage_clone));
+            let request_dispatcher_clone = request_dispatcher.clone();
+            spawner.spawn(move |_| handle_client(stream, 
+                storage_clone, request_dispatcher_clone));
         }
     }).unwrap();
 

@@ -7,7 +7,7 @@ pub struct Request {
 
 pub type Response = String;
 
-pub trait Handler {
+pub trait Handler : Send + Sync {
     fn handle(&mut self, args : &str) -> Response;
 }
 
