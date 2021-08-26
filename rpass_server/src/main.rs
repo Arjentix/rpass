@@ -8,25 +8,6 @@ use std::sync::{Arc, RwLock};
 use storage::Storage;
 use request_dispatcher::{RequestDispatcher};
 
-fn handle_client<S: Write + Read>(mut stream: S, _storage: Arc<RwLock<Storage>>,
-        request_dispatcher: Arc<RwLock<RequestDispatcher>>)
-        -> std::io::Result<()> {
-    const BUF_SIZE: usize = 512;
-    let mut raw_buf = vec![0u8; BUF_SIZE];
-    stream.read(&mut raw_buf)?;
-    let request = match String::from_utf8(raw_buf) {
-        Ok(str) => str,
-        Err(_) => return stream.write_all(
-            "Error: request should be in UTF-8 encoded form".as_bytes())
-    };
-
-    let mut request_dispatcher_write = request_dispatcher.write().unwrap();
-    let response = request_dispatcher_write.dispatch(&request).unwrap_or(
-        String::from("Error: invalid request"));
-
-    stream.write_all(response.as_bytes())
-}
-
 fn main() -> std::io::Result<()> {
     let home_dir = dirs::home_dir().ok_or(
         Error::new(ErrorKind::NotFound, "Can't open home directory"))?;
@@ -61,4 +42,23 @@ fn log_connection(stream: &TcpStream) {
         Err(_) => Cow::from("unknown")
     };
     println!("Connected with {}", addr);
+}
+
+fn handle_client<S: Write + Read>(mut stream: S, _storage: Arc<RwLock<Storage>>,
+        request_dispatcher: Arc<RwLock<RequestDispatcher>>)
+        -> std::io::Result<()> {
+    const BUF_SIZE: usize = 512;
+    let mut raw_buf = vec![0u8; BUF_SIZE];
+    stream.read(&mut raw_buf)?;
+    let request = match String::from_utf8(raw_buf) {
+        Ok(str) => str,
+        Err(_) => return stream.write_all(
+            "Error: request should be in UTF-8 encoded form".as_bytes())
+    };
+
+    let mut request_dispatcher_write = request_dispatcher.write().unwrap();
+    let response = request_dispatcher_write.dispatch(&request).unwrap_or(
+        String::from("Error: invalid request"));
+
+    stream.write_all(response.as_bytes())
 }
