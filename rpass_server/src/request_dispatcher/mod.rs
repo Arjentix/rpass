@@ -1,14 +1,7 @@
 use std::collections::HashMap;
 
-pub struct Request {
-    pub command: String,
-    pub args: String
-}
-
-pub type Response = String;
-
 pub trait Handler : Send + Sync {
-    fn handle(&mut self, args : &str) -> Response;
+    fn handle(&mut self, args : &mut dyn Iterator<Item=&str>) -> String;
 }
 
 #[derive(Default)]
@@ -17,13 +10,19 @@ pub struct RequestDispatcher {
 }
 
 impl RequestDispatcher {
-    fn add_handler(&mut self, command: String, handler: Box<dyn Handler>) {
+    pub fn add_handler(&mut self, command: String, handler: Box<dyn Handler>) {
         self.command_to_handler.insert(command, handler);
     }
 
-    fn dispatch(&mut self, request: &Request) -> Option<Response> {
-        match self.command_to_handler.get_mut(&request.command) {
-            Some(ref mut handler) => Some(handler.handle(&request.args)),
+    pub fn dispatch(&mut self, request: &String) -> Option<String> {
+        let mut iter = request.split_whitespace();
+        let command = match iter.next() {
+            Some(cmd) => cmd,
+            None => return None
+        };
+
+        match self.command_to_handler.get_mut(command) {
+            Some(ref mut handler) => Some(handler.handle(&mut iter)),
             None => None
         }
     }
