@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::fs;
+use rpass::key::Key;
 
 /// Password storage
 pub struct Storage {
@@ -16,6 +17,18 @@ impl Storage {
         Self::open_storage(real_path);
 
         Storage {path: real_path.to_path_buf()}
+    }
+
+    /// Adds new user to the storage
+    /// 
+    /// Creates user folder with name `username` ans *key.pub* file with
+    /// `pub_key` content
+    pub fn add_new_user(&mut self, username: &String, pub_key: &Key)
+            -> std::io::Result<()> {
+        let user_dir = self.path.join(username);
+        let pub_key_file = user_dir.join("key.pub");
+        fs::create_dir(user_dir)?;
+        fs::write(pub_key_file, pub_key.as_bytes())
     }
 
     /// Open storage directory
