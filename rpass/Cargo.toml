@@ -7,3 +7,4 @@ edition = "2018"
 
 [dependencies]
 num-bigint = "0.4"
+byteorder = "1.4.3"
