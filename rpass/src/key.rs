@@ -1,6 +1,6 @@
 use num_bigint::BigUint;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use std::io::{Read, Write};
+use std::io::{Result, Read, Write};
 
 /// RSA-Key
 #[derive(PartialEq, Eq, Debug)]
@@ -20,11 +20,8 @@ impl Key {
     }
 
     /// Constructs new key from bytes
-    /// 
-    /// # Panics
-    /// Panics if some error occurred during reading from `bytes`
-    pub fn from_bytes(mut bytes: &[u8]) -> Self {
-        Key(Self::read_part(&mut bytes), Self::read_part(&mut bytes))
+    pub fn from_bytes(mut bytes: &[u8]) -> Result<Self> {
+        Ok(Key(Self::read_part(&mut bytes)?, Self::read_part(&mut bytes)?))
     }
 
     /// Writes one part of key to the `write`
@@ -38,14 +35,11 @@ impl Key {
     }
 
     /// Reads one part of key from the `read`
-    /// 
-    /// # Panics
-    /// Panics if some error occurred during reading from `read`
-    fn read_part(read: &mut dyn Read) -> BigUint {
-        let len = read.read_u64::<LittleEndian>().unwrap() as usize;
+    fn read_part(read: &mut dyn Read) -> Result<BigUint> {
+        let len = read.read_u64::<LittleEndian>()? as usize;
         let mut part_bytes = vec![0u8; len];
-        read.read_exact(&mut part_bytes).unwrap();
-        BigUint::from_bytes_le(&part_bytes)
+        read.read_exact(&mut part_bytes)?;
+        Ok(BigUint::from_bytes_le(&part_bytes))
     }
 }
 
@@ -86,7 +80,7 @@ mod tests {
         bytes.write_u64::<LittleEndian>(bytes_per_bits(big_n.bits())).unwrap();
         bytes.write_u16::<LittleEndian>(n as u16).unwrap();
 
-        let key = Key::from_bytes(&bytes);
+        let key = Key::from_bytes(&bytes).unwrap();
         assert_eq!(key.0, big_e);
         assert_eq!(key.1, big_n);
     }
@@ -97,7 +91,7 @@ mod tests {
         let n = 8975u64;
         let key = Key(e.to_biguint().unwrap(), n.to_biguint().unwrap());
 
-        assert_eq!(key, Key::from_bytes(&key.as_bytes()));
+        assert_eq!(key, Key::from_bytes(&key.as_bytes()).unwrap());
     }
 
     /// Computes number of bytes needful to represent `bits` number of bits
