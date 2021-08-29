@@ -53,10 +53,9 @@ fn main() -> std::io::Result<()> {
             };
             log_connection(&stream);
 
-            let storage_clone = storage.clone();
             let request_dispatcher_clone = request_dispatcher.clone();
-            spawner.spawn(move |_| handle_client(stream, 
-                storage_clone, request_dispatcher_clone));
+            spawner.spawn(move |_| handle_client(stream,
+                request_dispatcher_clone));
         }
     }).unwrap();
 
@@ -72,7 +71,7 @@ fn log_connection(stream: &TcpStream) {
     println!("Connected with {}", addr);
 }
 
-fn handle_client(mut stream: TcpStream, _storage: Arc<RwLock<Storage>>,
+fn handle_client(mut stream: TcpStream,
         request_dispatcher: Arc<RwLock<RequestDispatcher>>)
         -> std::io::Result<()> {
     let mut reader = BufReader::new(stream.try_clone()?);
