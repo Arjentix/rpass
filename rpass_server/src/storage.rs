@@ -1,6 +1,7 @@
+pub use rpass::key::Key;
+
 use std::path::{Path, PathBuf};
 use std::fs;
-use rpass::key::Key;
 
 /// Password storage
 pub struct Storage {
