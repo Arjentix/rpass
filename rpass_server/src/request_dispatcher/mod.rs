@@ -17,7 +17,7 @@ impl RequestDispatcher {
         self.command_to_callback.insert(command, Box::new(callback));
     }
 
-    pub fn dispatch(&self, request: &String) -> Option<String> {
+    pub fn dispatch(&self, request: &str) -> Option<String> {
         let mut iter = request.split_whitespace();
         let command = match iter.next() {
             Some(cmd) => cmd,

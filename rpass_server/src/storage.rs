@@ -23,7 +23,7 @@ impl Storage {
     /// 
     /// Creates user folder with name `username` ans *key.pub* file with
     /// `pub_key` content. Makes no `username` validation
-    pub fn add_new_user(&mut self, username: &String, pub_key: &Key)
+    pub fn add_new_user(&mut self, username: &str, pub_key: &Key)
             -> std::io::Result<()> {
         let user_dir = self.path.join(username);
         let pub_key_file = user_dir.join("key.pub");
