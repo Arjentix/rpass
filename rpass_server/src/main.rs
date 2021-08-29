@@ -2,10 +2,11 @@ mod storage;
 mod request_dispatcher;
 
 use std::net::{TcpListener, TcpStream};
-use std::io::{Read, Write, Error, ErrorKind};
+use std::io::{BufRead, BufReader, Write, Error, ErrorKind};
 use std::borrow::Cow;
 use std::sync::{Arc, RwLock};
-use storage::Storage;
+use std::str::FromStr;
+use storage::{Storage, Key};
 use request_dispatcher::{RequestDispatcher};
 
 fn main() -> std::io::Result<()> {
@@ -13,7 +14,34 @@ fn main() -> std::io::Result<()> {
         Error::new(ErrorKind::NotFound, "Can't open home directory"))?;
     let path = home_dir.join(".rpass_storage");
     let storage = Arc::new(RwLock::new(Storage::from_path(path)));
+
     let request_dispatcher = Arc::new(RwLock::new(RequestDispatcher::default()));
+
+    {
+        let mut dispatcher_write = request_dispatcher.write().unwrap();
+        let storage_clone = storage.clone();
+        dispatcher_write.add_callback("register".to_string(), move |arg_iter| {
+            let username = match arg_iter.next() {
+                Some(username) => username,
+                None => return "Error: empty username".to_string()
+            };
+            println!("username = \"{}\"", username);
+            let key_string = match arg_iter.next() {
+                Some(key_string) => key_string,
+                None => return "Error: empty key".to_string()
+            };
+            let key = match Key::from_str(key_string) {
+                Ok(key) => key,
+                Err(err) => return err.to_string()
+            };
+
+            let mut storage_write = storage_clone.write().unwrap();
+            match storage_write.add_new_user(&username, &key) {
+                Ok(()) => "Ok".to_string(),
+                Err(err) => err.to_string()
+            }
+        });
+    }
 
     let listener = TcpListener::bind("127.0.0.1:3747")?;
 
@@ -44,26 +72,21 @@ fn log_connection(stream: &TcpStream) {
     println!("Connected with {}", addr);
 }
 
-fn handle_client<S: Write + Read>(mut stream: S, _storage: Arc<RwLock<Storage>>,
+fn handle_client(mut stream: TcpStream, _storage: Arc<RwLock<Storage>>,
         request_dispatcher: Arc<RwLock<RequestDispatcher>>)
         -> std::io::Result<()> {
-    let request = match String::from_utf8(read_raw_request(&mut stream)?) {
-        Ok(str) => str,
-        Err(_) => return stream.write_all(
-            "Error: request should be in UTF-8 encoded form".as_bytes())
-    };
+    let mut reader = BufReader::new(stream.try_clone()?);
+    let mut request = String::new();
+    if let Err(_) = reader.read_line(&mut request) {
+        return stream.write_all(
+            "Error: request should be in UTF-8 format".as_bytes());
+    }
+    request = request.trim().to_string();
+    println!("request = \"{}\"", request);
 
-    let mut request_dispatcher_write = request_dispatcher.write().unwrap();
-    let response = request_dispatcher_write.dispatch(&request).unwrap_or(
+    let dispatcher_read = request_dispatcher.read().unwrap();
+    let response = dispatcher_read.dispatch(&request).unwrap_or(
         String::from("Error: invalid request"));
 
     stream.write_all(response.as_bytes())
-}
-
-/// Reads 512 bytes from reader
-fn read_raw_request<R: Read>(reader: &mut R) -> std::io::Result<Vec<u8>> {
-    const BUF_SIZE: usize = 512;
-    let mut raw_buf = vec![0u8; BUF_SIZE];
-    reader.read(&mut raw_buf)?;
-    Ok(raw_buf)
 }
