@@ -1,12 +1,12 @@
 mod storage;
 mod request_dispatcher;
+mod callbacks;
 
 use std::net::{TcpListener, TcpStream};
 use std::io::{BufRead, BufReader, Write, Error, ErrorKind};
 use std::borrow::Cow;
 use std::sync::{Arc, RwLock};
-use std::str::FromStr;
-use storage::{Storage, Key};
+use storage::Storage;
 use request_dispatcher::{RequestDispatcher};
 
 fn main() -> std::io::Result<()> {
@@ -39,33 +39,13 @@ fn main() -> std::io::Result<()> {
 fn build_request_dispatcher(storage : Arc<RwLock<Storage>>) -> Arc<RwLock<RequestDispatcher>> {
     let request_dispatcher = Arc::new(RwLock::new(RequestDispatcher::default()));
 
-    let mut dispatcher_write = request_dispatcher.write().unwrap();
     {
-        let storage_clone = storage.clone();
+        let mut dispatcher_write = request_dispatcher.write().unwrap();
         dispatcher_write.add_callback("register".to_string(), move |arg_iter| {
-            let username = match arg_iter.next() {
-                Some(username) => username,
-                None => return "Error: empty username".to_string()
-            };
-            println!("username = \"{}\"", username);
-            let key_string = match arg_iter.next() {
-                Some(key_string) => key_string,
-                None => return "Error: empty key".to_string()
-            };
-            let key = match Key::from_str(key_string) {
-                Ok(key) => key,
-                Err(err) => return err.to_string()
-            };
-
-            let mut storage_write = storage_clone.write().unwrap();
-            match storage_write.add_new_user(&username, &key) {
-                Ok(()) => "Ok".to_string(),
-                Err(err) => err.to_string()
-            }
+            callbacks::register(storage.clone(), arg_iter)
         });
     }
 
-    drop(dispatcher_write);
     request_dispatcher
 }
 
