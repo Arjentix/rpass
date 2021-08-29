@@ -1,10 +1,12 @@
-use num_bigint::BigUint;
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+pub use num_bigint::{BigUint, ToBigUint};
+
 use std::io::{Result, Read, Write};
+use std::str::FromStr;
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 /// RSA-Key
 #[derive(PartialEq, Eq, Debug)]
-pub struct Key (BigUint, BigUint);
+pub struct Key (pub BigUint, pub BigUint);
 
 impl Key {
     /// Returns byte representation of key
@@ -43,11 +45,31 @@ impl Key {
     }
 }
 
+impl FromStr for Key {
+    type Err = num_bigint::ParseBigIntError;
+
+    /// Constructs new key from string in format `<first_num>:<second_num>`
+    /// 
+    /// # Examples
+    /// 
+    /// ```rust
+    /// use std::str::FromStr;
+    /// use rpass::key::{Key, BigUint, ToBigUint};
+    /// 
+    /// let key = Key::from_str("898:19634").unwrap();
+    /// assert_eq!(key.0, 898u64.to_biguint().unwrap());
+    /// assert_eq!(key.1, 19634u64.to_biguint().unwrap());
+    /// ```
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        let mut part_iter = s.split(':');
+        Ok(Key(BigUint::from_str(part_iter.next().unwrap_or(""))?,
+            BigUint::from_str(part_iter.next().unwrap_or(""))?))
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use num_bigint::ToBigUint;
 
     #[test]
     fn test_as_bytes() {
@@ -92,6 +114,24 @@ mod tests {
         let key = Key(e.to_biguint().unwrap(), n.to_biguint().unwrap());
 
         assert_eq!(key, Key::from_bytes(&key.as_bytes()).unwrap());
+    }
+
+    #[test]
+    fn test_from_str_empty() {
+        assert!(Key::from_str("").is_err());
+    }
+
+    #[test]
+    fn test_from_str_one_part() {
+        assert!(Key::from_str("156").is_err());
+        assert!(Key::from_str("19704:").is_err());
+        assert!(Key::from_str(":9758").is_err());
+        assert!(Key::from_str("41958:key").is_err());
+    }
+
+    #[test]
+    fn test_from_str_not_a_number() {
+        assert!(Key::from_str("public:key").is_err());
     }
 
     /// Computes number of bytes needful to represent `bits` number of bits
