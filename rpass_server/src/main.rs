@@ -13,12 +13,34 @@ fn main() -> std::io::Result<()> {
     let home_dir = dirs::home_dir().ok_or(
         Error::new(ErrorKind::NotFound, "Can't open home directory"))?;
     let path = home_dir.join(".rpass_storage");
-    let storage = Arc::new(RwLock::new(Storage::from_path(path)));
 
+    let storage = Arc::new(RwLock::new(Storage::from_path(path)));
+    let request_dispatcher = build_request_dispatcher(storage);
+
+    let listener = TcpListener::bind("127.0.0.1:3747")?;
+
+    crossbeam_utils::thread::scope(|spawner| {
+        for stream_res in listener.incoming() {
+            let stream = match stream_res {
+                Ok(connection) => connection,
+                Err(_) => break
+            };
+            log_connection(&stream);
+
+            let request_dispatcher_clone = request_dispatcher.clone();
+            spawner.spawn(move |_| handle_client(stream,
+                request_dispatcher_clone));
+        }
+    }).unwrap();
+
+    Ok(())
+}
+
+fn build_request_dispatcher(storage : Arc<RwLock<Storage>>) -> Arc<RwLock<RequestDispatcher>> {
     let request_dispatcher = Arc::new(RwLock::new(RequestDispatcher::default()));
 
+    let mut dispatcher_write = request_dispatcher.write().unwrap();
     {
-        let mut dispatcher_write = request_dispatcher.write().unwrap();
         let storage_clone = storage.clone();
         dispatcher_write.add_callback("register".to_string(), move |arg_iter| {
             let username = match arg_iter.next() {
@@ -43,23 +65,8 @@ fn main() -> std::io::Result<()> {
         });
     }
 
-    let listener = TcpListener::bind("127.0.0.1:3747")?;
-
-    crossbeam_utils::thread::scope(|spawner| {
-        for stream_res in listener.incoming() {
-            let stream = match stream_res {
-                Ok(connection) => connection,
-                Err(_) => break
-            };
-            log_connection(&stream);
-
-            let request_dispatcher_clone = request_dispatcher.clone();
-            spawner.spawn(move |_| handle_client(stream,
-                request_dispatcher_clone));
-        }
-    }).unwrap();
-
-    Ok(())
+    drop(dispatcher_write);
+    request_dispatcher
 }
 
 /// Logs stream peer address to the stdout
