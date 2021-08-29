@@ -1,10 +1,8 @@
 use std::collections::HashMap;
 
-pub trait Handler : Send + Sync {
-    fn handle(&mut self, args : &mut dyn Iterator<Item=&str>) -> String;
-}
+pub type ArgsIter<'a, 'b> =&'a mut dyn Iterator<Item=&'b str>;
 
-type Callback = dyn Fn(&mut dyn Iterator<Item=&str>) -> String + Send + Sync;
+type Callback = dyn Fn(ArgsIter) -> String + Send + Sync;
 
 #[derive(Default)]
 pub struct RequestDispatcher {
@@ -13,7 +11,7 @@ pub struct RequestDispatcher {
 
 impl RequestDispatcher {
     pub fn add_callback<C>(&mut self, command: String, callback: C)
-        where C: Fn(&mut dyn Iterator<Item=&str>) -> String + Send + Sync + 'static {
+        where C: Fn(ArgsIter) -> String + Send + Sync + 'static {
         self.command_to_callback.insert(command, Box::new(callback));
     }
 
