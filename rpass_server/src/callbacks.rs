@@ -9,15 +9,15 @@ pub fn register(storage: Arc<RwLock<Storage>>, arg_iter: ArgIter)
         -> String {
     let username = match arg_iter.next() {
         Some(username) => username,
-        None => return "Error: empty username".to_string()
+        None => return "Error: empty username".to_owned()
     };
     if !is_valid_username(username) {
-        return "Error: invalid username".to_string();
+        return "Error: invalid username".to_owned();
     }
 
     let key_string = match arg_iter.next() {
         Some(key_string) => key_string,
-        None => return "Error: empty key".to_string()
+        None => return "Error: empty key".to_owned()
     };
     let key = match Key::from_str(key_string) {
         Ok(key) => key,
@@ -26,7 +26,7 @@ pub fn register(storage: Arc<RwLock<Storage>>, arg_iter: ArgIter)
 
     let mut storage_write = storage.write().unwrap();
     match storage_write.add_new_user(&username, &key) {
-        Ok(()) => "Ok".to_string(),
+        Ok(()) => "Ok".to_owned(),
         Err(err) => err.to_string()
     }
 }

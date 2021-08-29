@@ -41,7 +41,7 @@ fn build_request_dispatcher(storage : Arc<RwLock<Storage>>) -> Arc<RwLock<Reques
 
     {
         let mut dispatcher_write = request_dispatcher.write().unwrap();
-        dispatcher_write.add_callback("register".to_string(), move |arg_iter| {
+        dispatcher_write.add_callback("register".to_owned(), move |arg_iter| {
             callbacks::register(storage.clone(), arg_iter)
         });
     }
@@ -67,7 +67,7 @@ fn handle_client(mut stream: TcpStream,
         return stream.write_all(
             "Error: request should be in UTF-8 format".as_bytes());
     }
-    request = request.trim().to_string();
+    request = request.trim().to_owned();
     println!("request = \"{}\"", request);
 
     let dispatcher_read = request_dispatcher.read().unwrap();
