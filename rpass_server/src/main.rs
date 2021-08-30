@@ -67,15 +67,19 @@ fn handle_client(mut stream: TcpStream,
     loop {
         if let Err(_) = reader.read_line(&mut request) {
             stream.write_all(
-                "Error: request should be in UTF-8 format".as_bytes())?;
+                "Error: request should be in UTF-8 format\r\n".as_bytes())?;
             continue;
         }
         request = request.trim().to_owned();
         println!("request = \"{}\"", request);
 
         let dispatcher_read = request_dispatcher.read().unwrap();
-        let response = dispatcher_read.dispatch(&request).unwrap_or(
-            String::from("Error: invalid request"));
+        let mut response = dispatcher_read.dispatch(&request).unwrap_or(
+            String::from("Error: invalid request\r\n"));
+
+        if !response.ends_with("\r\n") {
+            response += "\r\n";
+        }
 
         stream.write_all(response.as_bytes())?;
         request.clear();
