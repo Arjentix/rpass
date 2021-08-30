@@ -63,16 +63,21 @@ fn handle_client(mut stream: TcpStream,
         -> std::io::Result<()> {
     let mut reader = BufReader::new(stream.try_clone()?);
     let mut request = String::new();
-    if let Err(_) = reader.read_line(&mut request) {
-        return stream.write_all(
-            "Error: request should be in UTF-8 format".as_bytes());
+
+    loop {
+        if let Err(_) = reader.read_line(&mut request) {
+            stream.write_all(
+                "Error: request should be in UTF-8 format".as_bytes())?;
+            continue;
+        }
+        request = request.trim().to_owned();
+        println!("request = \"{}\"", request);
+
+        let dispatcher_read = request_dispatcher.read().unwrap();
+        let response = dispatcher_read.dispatch(&request).unwrap_or(
+            String::from("Error: invalid request"));
+
+        stream.write_all(response.as_bytes())?;
+        request.clear();
     }
-    request = request.trim().to_owned();
-    println!("request = \"{}\"", request);
-
-    let dispatcher_read = request_dispatcher.read().unwrap();
-    let response = dispatcher_read.dispatch(&request).unwrap_or(
-        String::from("Error: invalid request"));
-
-    stream.write_all(response.as_bytes())
 }
