@@ -75,8 +75,10 @@ fn handle_client(mut stream: TcpStream,
         println!("request = \"{}\"", request);
 
         let dispatcher_read = request_dispatcher.read().unwrap();
-        let mut response = dispatcher_read.dispatch(&request).unwrap_or(
-            String::from("Error: invalid request\r\n"));
+        let mut response = match dispatcher_read.dispatch(&request) {
+            Ok(response) => response,
+            Err(err) => format!("Error: {}\r\n", err.to_string())
+        };
 
         if !response.ends_with("\r\n") {
             response += "\r\n";
