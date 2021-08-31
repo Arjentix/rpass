@@ -1,4 +1,4 @@
-pub use num_bigint::{BigUint, ToBigUint};
+pub use num_bigint::{BigUint, ToBigUint, ParseBigIntError};
 
 use std::io::{Result, Read, Write};
 use std::str::FromStr;
@@ -46,7 +46,7 @@ impl Key {
 }
 
 impl FromStr for Key {
-    type Err = num_bigint::ParseBigIntError;
+    type Err = ParseBigIntError;
 
     /// Constructs new key from string in format `<first_num>:<second_num>`
     /// 
