@@ -12,6 +12,6 @@ pub enum RegistrationError {
     #[error("invalid key: `{0}`")]
     InvalidKey(#[from] rpass::key::ParseBigIntError),
 
-    #[error("can't register user: `{0}`")]
-    CantRegisterUser(#[from] std::io::Error)
+    #[error("user already exists")]
+    AlreadyExists (#[from] std::io::Error)
 }
