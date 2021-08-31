@@ -1,31 +1,11 @@
+
+pub mod errors;
+
 use std::sync::{Arc, RwLock};
+use std::str::FromStr;
 
 use crate::storage::{Storage, Key};
 use crate::request_dispatcher::{ArgIter};
-
-use std::str::FromStr;
-
-mod errors {
-
-#[derive(thiserror::Error, Debug)]
-pub enum RegistrationError {
-    #[error("empty username")]
-    EmptyUsername,
-
-    #[error("invalid username: {0}")]
-    InvalidUsername(String),
-
-    #[error("empty key")]
-    EmptyKey,
-
-    #[error("invalid key: `{0}`")]
-    InvalidKey(#[from] rpass::key::ParseBigIntError),
-
-    #[error("can't register user: `{0}`")]
-    CantRegisterUser(#[from] std::io::Error)
-}
-
-}
 
 use errors::*;
 
