@@ -1,34 +1,48 @@
 use std::sync::{Arc, RwLock};
 
 use crate::storage::{Storage, Key};
-use crate::request_dispatcher::ArgIter;
+use crate::request_dispatcher::{ArgIter};
 
 use std::str::FromStr;
 
+mod errors {
+
+#[derive(thiserror::Error, Debug)]
+pub enum RegistrationError {
+    #[error("empty username")]
+    EmptyUsername,
+
+    #[error("invalid username: {0}")]
+    InvalidUsername(String),
+
+    #[error("empty key")]
+    EmptyKey,
+
+    #[error("invalid key: `{0}`")]
+    InvalidKey(#[from] rpass::key::ParseBigIntError),
+
+    #[error("can't register user: `{0}`")]
+    CantRegisterUser(#[from] std::io::Error)
+}
+
+}
+
+use errors::*;
+
 pub fn register(storage: Arc<RwLock<Storage>>, arg_iter: ArgIter)
-        -> String {
-    let username = match arg_iter.next() {
-        Some(username) => username,
-        None => return "Error: empty username".to_owned()
-    };
+        -> std::result::Result<String, RegistrationError> {
+    let username = arg_iter.next().ok_or(RegistrationError::EmptyUsername)?;
     if !is_valid_username(username) {
-        return "Error: invalid username".to_owned();
+        return Err(RegistrationError::InvalidUsername(username.to_owned()));
     }
 
-    let key_string = match arg_iter.next() {
-        Some(key_string) => key_string,
-        None => return "Error: empty key".to_owned()
-    };
-    let key = match Key::from_str(key_string) {
-        Ok(key) => key,
-        Err(err) => return err.to_string()
-    };
+    let key_string = arg_iter.next().ok_or(RegistrationError::EmptyKey)?;
+    let key = Key::from_str(key_string)?;
 
     let mut storage_write = storage.write().unwrap();
-    match storage_write.add_new_user(&username, &key) {
-        Ok(()) => "Ok".to_owned(),
-        Err(err) => err.to_string()
-    }
+    storage_write.add_new_user(&username, &key)?;
+
+    Ok("Ok".to_owned())
 }
 
 /// Checks if `username` is a valid string. 

@@ -36,13 +36,14 @@ fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-fn build_request_dispatcher(storage : Arc<RwLock<Storage>>) -> Arc<RwLock<RequestDispatcher>> {
+fn build_request_dispatcher(storage : Arc<RwLock<Storage>>)
+        -> Arc<RwLock<RequestDispatcher>> {
     let request_dispatcher = Arc::new(RwLock::new(RequestDispatcher::default()));
 
     {
         let mut dispatcher_write = request_dispatcher.write().unwrap();
         dispatcher_write.add_callback("register".to_owned(), move |arg_iter| {
-            callbacks::register(storage.clone(), arg_iter)
+            callbacks::register(storage.clone(), arg_iter).map_err(|err| err.into())
         });
     }
 
