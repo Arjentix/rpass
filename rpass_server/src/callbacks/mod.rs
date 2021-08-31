@@ -9,8 +9,13 @@ use crate::request_dispatcher::{ArgIter};
 
 use errors::*;
 
+/// Registers new user in `storage` with username and key taken from `arg_iter`
+/// 
+/// Performs username validity check
+/// 
+/// Returns *Ok("Ok")* in success
 pub fn register(storage: Arc<RwLock<Storage>>, arg_iter: ArgIter)
-        -> std::result::Result<String, RegistrationError> {
+        -> Result<String, RegistrationError> {
     let username = arg_iter.next().ok_or(RegistrationError::EmptyUsername)?;
     if !is_valid_username(username) {
         return Err(RegistrationError::InvalidUsername(username.to_owned()));
