@@ -1,6 +1,7 @@
 mod storage;
 mod request_dispatcher;
 mod callbacks;
+mod session;
 
 use std::net::{TcpListener, TcpStream};
 use std::io::{BufRead, BufReader, Write, Error, ErrorKind};
@@ -8,6 +9,7 @@ use std::borrow::Cow;
 use std::sync::{Arc, RwLock};
 use storage::Storage;
 use request_dispatcher::{RequestDispatcher};
+use session::Session;
 
 fn main() -> std::io::Result<()> {
     let home_dir = dirs::home_dir().ok_or(
@@ -42,7 +44,7 @@ fn build_request_dispatcher(storage : Arc<RwLock<Storage>>)
 
     {
         let mut dispatcher_write = request_dispatcher.write().unwrap();
-        dispatcher_write.add_callback("register".to_owned(), move |arg_iter| {
+        dispatcher_write.add_callback("register".to_owned(), move |_, arg_iter| {
             callbacks::register(storage.clone(), arg_iter).map_err(|err| err.into())
         });
     }
@@ -64,6 +66,7 @@ fn handle_client(mut stream: TcpStream,
         -> std::io::Result<()> {
     let mut reader = BufReader::new(stream.try_clone()?);
     let mut request = String::new();
+    let mut session = Session::default();
 
     loop {
         if let Err(_) = reader.read_line(&mut request) {
@@ -75,7 +78,7 @@ fn handle_client(mut stream: TcpStream,
         println!("request = \"{}\"", request);
 
         let dispatcher_read = request_dispatcher.read().unwrap();
-        let mut response = match dispatcher_read.dispatch(&request) {
+        let mut response = match dispatcher_read.dispatch(&mut session, &request) {
             Ok(response) => response,
             Err(err) => format!("Error: {}\r\n", err.to_string())
         };

@@ -2,10 +2,12 @@ pub use anyhow::Error;
 
 use std::collections::HashMap;
 
+use crate::session::Session;
+
 pub type ArgIter<'a, 'b> =&'a mut dyn Iterator<Item=&'b str>;
 pub type Result<T> = std::result::Result<T, Error>;
 
-type Callback = dyn Fn(ArgIter) -> Result<String> + Send + Sync;
+type Callback = dyn Fn(&mut Session, ArgIter) -> Result<String> + Send + Sync;
 
 mod errors {
 
@@ -29,11 +31,11 @@ pub struct RequestDispatcher {
 
 impl RequestDispatcher {
     pub fn add_callback<C>(&mut self, command: String, callback: C)
-        where C: Fn(ArgIter) -> Result<String> + Send + Sync + 'static {
+        where C: Fn(&mut Session, ArgIter) -> Result<String> + Send + Sync + 'static {
         self.command_to_callback.insert(command, Box::new(callback));
     }
 
-    pub fn dispatch(&self, request: &str) -> Result<String> {
+    pub fn dispatch(&self, session: &mut Session, request: &str) -> Result<String> {
         let mut iter = request.split_whitespace();
         let command = match iter.next() {
             Some(cmd) => cmd,
@@ -41,7 +43,7 @@ impl RequestDispatcher {
         };
 
         match self.command_to_callback.get(command) {
-            Some(callback) => callback(&mut iter),
+            Some(callback) => callback(session, &mut iter),
             None => Err(Error::from(
                 DispatchingError::NoCallback(command.to_owned())))
         }
