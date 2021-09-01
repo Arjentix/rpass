@@ -30,9 +30,10 @@ pub struct RequestDispatcher {
 }
 
 impl RequestDispatcher {
-    pub fn add_callback<C>(&mut self, command: String, callback: C)
+    pub fn add_callback<C>(&mut self, command: String, callback: C) -> &mut Self
         where C: Fn(&mut Session, ArgIter) -> Result<String> + Send + Sync + 'static {
         self.command_to_callback.insert(command, Box::new(callback));
+        self
     }
 
     pub fn dispatch(&self, session: &mut Session, request: &str) -> Result<String> {
