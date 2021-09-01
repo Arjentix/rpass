@@ -27,6 +27,13 @@ impl Key {
         Ok(Key(Self::read_part(&mut bytes)?, Self::read_part(&mut bytes)?))
     }
 
+    /// Encrypt `s` with key
+    /// 
+    /// TODO
+    pub fn encrypt(&self, s: &str) -> String {
+        s.to_owned()
+    }
+
     /// Writes one part of key to the `write`
     /// 
     /// # Panics
