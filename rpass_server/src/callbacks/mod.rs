@@ -3,18 +3,22 @@ pub mod errors;
 
 use std::sync::{Arc, RwLock};
 use std::str::FromStr;
-
+use rand::{thread_rng, Rng};
+use rand::distributions::Alphanumeric;
 use crate::storage::{Storage, Key};
 use crate::request_dispatcher::{ArgIter};
+use crate::session::Session;
 
 use errors::*;
+
+type AsyncStorage = Arc<RwLock<Storage>>;
 
 /// Registers new user in `storage` with username and key taken from `arg_iter`
 /// 
 /// Performs username validity check
 /// 
 /// Returns *Ok("Ok")* in success
-pub fn register(storage: Arc<RwLock<Storage>>, arg_iter: ArgIter)
+pub fn register(storage: AsyncStorage, arg_iter: ArgIter)
         -> Result<String, RegistrationError> {
     let username = arg_iter.next().ok_or(RegistrationError::EmptyUsername)?;
     if !is_valid_username(username) {
@@ -28,6 +32,32 @@ pub fn register(storage: Arc<RwLock<Storage>>, arg_iter: ArgIter)
     storage_write.add_new_user(&username, &key)?;
 
     Ok("Ok".to_owned())
+}
+
+/// First part of user logging. Reads username from `arg_iter`, gets his key
+/// from `storage` and writes random encrypted string into
+/// `session.login_confirmation`. Returns *Ok() with login confirmation* in success
+/// 
+/// The next step user should decrypt that random confirmation string and send
+/// it back. See `confirm_login` function
+pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
+        -> Result<String, LoginError> {
+    let username = arg_iter.next().ok_or(LoginError::EmptyUsername)?;
+
+    let user_pub_key = {
+        let storage_read = storage.read().unwrap();
+        storage_read.get_user_pub_key(username)?
+    };
+
+    const RAND_STRING_LENGTH: usize = 30;
+    let rand_string: String = thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(RAND_STRING_LENGTH)
+        .map(char::from)
+        .collect();
+
+    session.login_confirmation = Some(user_pub_key.encrypt(&rand_string));
+    Ok(session.login_confirmation.as_ref().unwrap().clone())
 }
 
 /// Checks if `username` is a valid string. 

@@ -15,3 +15,12 @@ pub enum RegistrationError {
     #[error("user already exists")]
     AlreadyExists (#[from] std::io::Error)
 }
+
+#[derive(thiserror::Error, Debug)]
+pub enum LoginError {
+    #[error("empty username")]
+    EmptyUsername,
+
+    #[error("user doesn't exists")]
+    NoSuchUser(#[from] std::io::Error)
+}
