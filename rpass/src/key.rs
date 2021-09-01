@@ -12,6 +12,7 @@ impl Key {
     /// Returns byte representation of key
     /// 
     /// # Panics
+    /// 
     /// Panics if can't write to the buffer
     pub fn as_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
@@ -29,6 +30,7 @@ impl Key {
     /// Writes one part of key to the `write`
     /// 
     /// # Panics
+    /// 
     /// Panics if can't write to the buffer
     fn write_part(part: &BigUint, write: &mut dyn Write) {
         let part_bytes = part.to_bytes_le();
