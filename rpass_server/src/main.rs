@@ -16,7 +16,7 @@ fn main() -> std::io::Result<()> {
         Error::new(ErrorKind::NotFound, "Can't open home directory"))?;
     let path = home_dir.join(".rpass_storage");
 
-    let storage = Arc::new(RwLock::new(Storage::from_path(path)));
+    let storage = Arc::new(RwLock::new(Storage::from_path(path)?));
     let request_dispatcher = build_request_dispatcher(storage);
 
     let listener = TcpListener::bind("127.0.0.1:3747")?;

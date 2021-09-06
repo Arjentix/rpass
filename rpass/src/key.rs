@@ -27,6 +27,14 @@ impl Key {
         Ok(Key(Self::read_part(&mut bytes)?, Self::read_part(&mut bytes)?))
     }
 
+    /// Generate pair of public and secret keys
+    /// 
+    /// TODO
+    pub fn generate_pair() -> (Self, Self) {
+        (Key(269.to_biguint().unwrap(), 221.to_biguint().unwrap()),
+         Key(5.to_biguint().unwrap(), 221.to_biguint().unwrap()))
+    }
+
     /// Encrypt `s` with key
     /// 
     /// TODO
