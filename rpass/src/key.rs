@@ -84,6 +84,23 @@ impl FromStr for Key {
     }
 }
 
+impl ToString for Key {
+    /// Converts key to string
+    /// 
+    /// # Examples
+    /// 
+    /// ```rust
+    /// use rpass::key::{Key, ToBigUint};
+    /// 
+    /// let key = Key(845u64.to_biguint().unwrap(), 947u64.to_biguint().unwrap());
+    /// assert_eq!(key.to_string(), "845:947");
+    /// ```
+    fn to_string(&self) -> String {
+        self.0.to_string() + ":" + &self.1.to_string()
+    }
+
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -101,7 +118,7 @@ mod tests {
         bytes.write_u64::<LittleEndian>(bytes_per_bits(big_n.bits())).unwrap();
         bytes.write_u16::<LittleEndian>(n as u16).unwrap();
 
-        let key = Key (big_e, big_n);
+        let key = Key(big_e, big_n);
         
         assert_eq!(bytes, key.as_bytes());
     }
