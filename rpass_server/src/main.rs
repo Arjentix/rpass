@@ -4,20 +4,20 @@ mod callbacks;
 mod session;
 
 use std::net::{TcpListener, TcpStream};
-use std::io::{BufRead, BufReader, Write, Error, ErrorKind};
+use std::io::{Result, BufRead, BufReader, Write, Error, ErrorKind};
 use std::borrow::Cow;
 use std::sync::{Arc, RwLock};
 use storage::Storage;
 use request_dispatcher::{RequestDispatcher};
 use session::Session;
 
-fn main() -> std::io::Result<()> {
+fn main() -> Result<()> {
     let home_dir = dirs::home_dir().ok_or(
         Error::new(ErrorKind::NotFound, "Can't open home directory"))?;
     let path = home_dir.join(".rpass_storage");
 
     let storage = Arc::new(RwLock::new(Storage::from_path(path)?));
-    let request_dispatcher = build_request_dispatcher(storage);
+    let request_dispatcher = build_request_dispatcher(storage.clone());
 
     let listener = TcpListener::bind("127.0.0.1:3747")?;
 
@@ -30,7 +30,8 @@ fn main() -> std::io::Result<()> {
             log_connection(&stream);
 
             let request_dispatcher_clone = request_dispatcher.clone();
-            spawner.spawn(move |_| handle_client(stream,
+            let storage_clone = storage.clone();
+            spawner.spawn(move |_| handle_client(stream, storage_clone,
                 request_dispatcher_clone));
         }
     }).unwrap();
@@ -68,11 +69,14 @@ fn log_connection(stream: &TcpStream) {
 }
 
 fn handle_client(mut stream: TcpStream,
+        storage: Arc<RwLock<Storage>>,
         request_dispatcher: Arc<RwLock<RequestDispatcher>>)
-        -> std::io::Result<()> {
+        -> Result<()> {
     let mut reader = BufReader::new(stream.try_clone()?);
     let mut request = String::new();
     let mut session = Session::default();
+
+    send_storage_key(&mut stream, storage)?;
 
     loop {
         if let Err(_) = reader.read_line(&mut request) {
@@ -96,4 +100,13 @@ fn handle_client(mut stream: TcpStream,
         stream.write_all(response.as_bytes())?;
         request.clear();
     }
+}
+
+/// Sends storage pub key to the stream
+fn send_storage_key(stream: &mut TcpStream, storage: Arc<RwLock<Storage>>)
+        -> Result<()> {
+    let storage_read = storage.read().unwrap();
+    let pub_key = storage_read.get_pub_key();
+    let message = pub_key.to_string() + "\r\n";
+    stream.write_all(message.as_bytes())
 }
