@@ -54,6 +54,11 @@ impl Storage {
         Key::from_bytes(&fs::read(pub_key_file)?)
     }
 
+    /// Gets storage public key
+    pub fn get_pub_key(&self) -> &Key {
+        &self.pub_key
+    }
+
     /// Open storage directory
     /// 
     /// # Errors
