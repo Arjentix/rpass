@@ -38,8 +38,10 @@ pub fn register(storage: AsyncStorage, arg_iter: ArgIter)
 /// from `storage` and writes random encrypted string into
 /// `session.login_confirmation`. Returns *Ok() with login confirmation* in success
 /// 
-/// The next step user should decrypt that random confirmation string and send
-/// it back. See `confirm_login` function
+/// The next step user should decrypt that random confirmation string,
+/// encrypt if with storage public key and send it back.
+/// 
+/// See `confirm_login` function for second part
 pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
         -> Result<String, LoginError> {
     let username = arg_iter.next().ok_or(LoginError::EmptyUsername)?;
@@ -61,6 +63,12 @@ pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
     Ok(session.login_confirmation.as_ref().unwrap().clone())
 }
 
+/// Second and final part of user logging. Reads encrypted confirmation string
+/// from `arg_iter`, decrypts it with `storage.sec_key` and checks if it is equal to the
+/// `session.login_confirmation`.
+/// 
+/// Sets `session.is_authorized` to *true* and returns *Ok("Ok")* if everything
+/// is good
 pub fn confirm_login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
         -> Result<String, ConfirmLoginError> {
     if session.login_confirmation.is_none() || session.is_authorized {
