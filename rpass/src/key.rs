@@ -5,7 +5,7 @@ use std::str::FromStr;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 /// RSA-Key
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Key (pub BigUint, pub BigUint);
 
 impl Key {
@@ -39,6 +39,13 @@ impl Key {
     /// 
     /// TODO
     pub fn encrypt(&self, s: &str) -> String {
+        s.to_owned()
+    }
+
+    /// Decrypt `s` with key
+    /// 
+    /// TODO
+    pub fn decrypt(&self, s: &str) -> String {
         s.to_owned()
     }
 
