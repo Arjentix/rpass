@@ -46,13 +46,22 @@ fn build_request_dispatcher(storage : Arc<RwLock<Storage>>)
     {
         let register_storage = storage.clone();
         let login_storage = storage.clone();
+        let confirm_login_storage = storage.clone();
 
         let mut dispatcher_write = request_dispatcher.write().unwrap();
-        dispatcher_write.add_callback("register".to_owned(), move |_, arg_iter| {
-            callbacks::register(register_storage.clone(), arg_iter).map_err(|err| err.into())
+        dispatcher_write
+        .add_callback("register".to_owned(), move |_, arg_iter| {
+            callbacks::register(register_storage.clone(), arg_iter)
+                .map_err(|err| err.into())
         })
         .add_callback("login".to_owned(), move |session, arg_iter| {
-            callbacks::login(login_storage.clone(), session, arg_iter).map_err(|err| err.into())
+            callbacks::login(login_storage.clone(), session, arg_iter)
+                .map_err(|err| err.into())
+        })
+        .add_callback("confirm_login".to_owned(), move |session, arg_iter| {
+            callbacks::confirm_login(
+                confirm_login_storage.clone(), session, arg_iter)
+                .map_err(|err| err.into())
         });
     }
 
