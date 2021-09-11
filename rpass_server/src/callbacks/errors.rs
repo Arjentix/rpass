@@ -24,3 +24,12 @@ pub enum LoginError {
     #[error("user doesn't exists")]
     NoSuchUser(#[from] std::io::Error)
 }
+
+#[derive(thiserror::Error, Debug)]
+pub enum ConfirmLoginError {
+    #[error("unacceptable request at this state")]
+    UnacceptableRequestAtThisState,
+
+    #[error("empty confirmation string")]
+    EmptyConfirmationString
+}

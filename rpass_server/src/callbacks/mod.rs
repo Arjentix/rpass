@@ -60,6 +60,31 @@ pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
     Ok(session.login_confirmation.as_ref().unwrap().clone())
 }
 
+pub fn confirm_login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
+        -> Result<String, ConfirmLoginError> {
+    if session.login_confirmation.is_none() || session.is_authorized {
+        return Err(ConfirmLoginError::UnacceptableRequestAtThisState);
+    }
+
+    let encrypted_confirmation = arg_iter.next()
+        .ok_or(ConfirmLoginError::EmptyConfirmationString)?;
+
+    let sec_key;
+    {
+        let storage_read = storage.read().unwrap();
+        sec_key = storage_read.get_sec_key().clone();
+    }
+
+    let confirmation = sec_key.decrypt(encrypted_confirmation);
+    if &confirmation != session.login_confirmation.as_ref().unwrap() {
+        return Err(ConfirmLoginError::EmptyConfirmationString);
+    }
+    
+    session.login_confirmation = None;
+    session.is_authorized = true;
+    Ok("Ok".to_owned())
+}
+
 /// Checks if `username` is a valid string. 
 /// Valid means:
 /// * Not empty
