@@ -59,6 +59,11 @@ impl Storage {
         &self.pub_key
     }
 
+    /// Gets storage secret key
+    pub fn get_sec_key(&self) -> &Key {
+        &self.sec_key
+    }
+
     /// Open storage directory
     /// 
     /// # Errors
