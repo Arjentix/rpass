@@ -57,6 +57,7 @@ pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
         .collect();
 
     session.login_confirmation = Some(user_pub_key.encrypt(&rand_string));
+    session.is_authorized = false;
     Ok(session.login_confirmation.as_ref().unwrap().clone())
 }
 
