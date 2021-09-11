@@ -18,6 +18,14 @@ type AsyncStorage = Arc<RwLock<Storage>>;
 /// Performs username validity check
 /// 
 /// Returns *Ok("Ok")* in success
+/// 
+/// # Errors
+/// 
+/// * `EmptyUsername` - if no username was provided
+/// * `InvalidUsername` - if username is invalid
+/// * `EmptyKey` - if no key was provided
+/// * `InvalidKey` - if key is invalid
+/// * `AlreadyExists` - if user with such username already exists
 pub fn register(storage: AsyncStorage, arg_iter: ArgIter)
         -> Result<String, RegistrationError> {
     let username = arg_iter.next().ok_or(RegistrationError::EmptyUsername)?;
@@ -42,6 +50,11 @@ pub fn register(storage: AsyncStorage, arg_iter: ArgIter)
 /// encrypt if with storage public key and send it back.
 /// 
 /// See `confirm_login` function for second part
+/// 
+/// # Errors
+/// 
+/// * `EmptyUsername` - if no username was provided
+/// * `NoSuchUser` - if user with such username doesn't exist
 pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
         -> Result<String, LoginError> {
     let username = arg_iter.next().ok_or(LoginError::EmptyUsername)?;
@@ -69,6 +82,14 @@ pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
 /// 
 /// Sets `session.is_authorized` to *true* and returns *Ok("Ok")* if everything
 /// is good
+/// 
+/// See `confirm_login` function for second part
+/// 
+/// # Errors
+/// 
+/// * `UnacceptableRequestAtThisState` - if there isn't *login_confirmation* in `session` or
+/// user already authorized
+/// * `EmptyConfirmationString` - if confirmation string wasn't provided
 pub fn confirm_login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
         -> Result<String, ConfirmLoginError> {
     if session.login_confirmation.is_none() || session.is_authorized {

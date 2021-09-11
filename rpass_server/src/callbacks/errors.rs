@@ -13,7 +13,7 @@ pub enum RegistrationError {
     InvalidKey(#[from] rpass::key::ParseBigIntError),
 
     #[error("user already exists")]
-    AlreadyExists (#[from] std::io::Error)
+    AlreadyExists(#[from] std::io::Error)
 }
 
 #[derive(thiserror::Error, Debug)]
