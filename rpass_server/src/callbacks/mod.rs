@@ -1,4 +1,3 @@
-
 pub mod errors;
 
 use std::sync::{Arc, RwLock};
@@ -8,7 +7,6 @@ use rand::distributions::Alphanumeric;
 use crate::storage::{Storage, Key};
 use crate::request_dispatcher::{ArgIter};
 use crate::session::Session;
-
 use errors::*;
 
 type AsyncStorage = Arc<RwLock<Storage>>;
