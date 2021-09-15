@@ -44,6 +44,15 @@ impl Storage {
         fs::write(pub_key_file, pub_key.as_bytes())
     }
 
+    /// Deletes user's files and directory
+    /// 
+    /// # Errors
+    /// 
+    /// See [`std::fs::remove_dir_all()`]
+    pub fn delete_user(&mut self, username: &str) -> Result<()> {
+        fs::remove_dir_all(self.path.join(username))
+    }
+
     /// Reads and returns user public key
     /// 
     /// # Errors
