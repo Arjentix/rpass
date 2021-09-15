@@ -1,12 +1,17 @@
 pub mod errors;
 pub mod delete_me;
 
+use mockall_double::double;
+#[double]
+pub use crate::storage::Storage;
 pub use delete_me::delete_me;
+
 use std::sync::{Arc, RwLock};
 use std::str::FromStr;
 use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
-use crate::storage::{Storage, Key};
+
+use crate::storage::Key;
 use crate::request_dispatcher::{ArgIter};
 use crate::session::Session;
 use errors::*;

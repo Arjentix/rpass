@@ -7,7 +7,7 @@ use std::net::{TcpListener, TcpStream};
 use std::io::{Result, BufRead, BufReader, Write, Error, ErrorKind};
 use std::borrow::Cow;
 use std::sync::{Arc, RwLock};
-use storage::Storage;
+use callbacks::Storage;
 use request_dispatcher::{RequestDispatcher};
 use session::Session;
 

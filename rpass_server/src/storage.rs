@@ -3,6 +3,8 @@ pub use rpass::key::Key;
 use std::path::{Path, PathBuf};
 use std::fs;
 use std::io::{Result, Error, ErrorKind};
+#[cfg(test)]
+use mockall::automock;
 
 const PUB_KEY_FILENAME: &'static str = "key.pub";
 
@@ -13,13 +15,14 @@ pub struct Storage {
     sec_key: Key
 }
 
+#[cfg_attr(test, automock)]
 impl Storage {
     /// Initializes storage from given path to storage folder
     /// 
     /// # Errors
     /// 
     /// Any possible error during file/directory opening/writing
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
+    pub fn from_path<P: 'static + AsRef<Path>>(path: P) -> Result<Self> {
         let real_path = path.as_ref();
         Self::open_storage(real_path)?;
 

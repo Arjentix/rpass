@@ -12,3 +12,7 @@ dirs = "3.0.1"
 thiserror = "1.0"
 anyhow = "1.0"
 rand = "0.8.4"
+mockall_double = "0.2.0"
+
+[dev-dependencies]
+mockall = "0.10.2"
