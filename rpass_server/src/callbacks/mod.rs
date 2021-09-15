@@ -1,5 +1,7 @@
 pub mod errors;
+pub mod delete_me;
 
+pub use delete_me::delete_me;
 use std::sync::{Arc, RwLock};
 use std::str::FromStr;
 use rand::{thread_rng, Rng};
@@ -111,19 +113,6 @@ pub fn confirm_login(storage: AsyncStorage, session: &mut Session, arg_iter: Arg
     
     session.login_confirmation = None;
     session.is_authorized = true;
-    Ok("Ok".to_owned())
-}
-
-/// Deletes current user. Takes *username* from `session` and deletes it in
-/// `storage`
-/// 
-/// # Errors
-/// 
-/// * `UnableToDelete` - if for some reason user's data can't be deleted
-pub fn delete_me(storage: AsyncStorage, session: &mut Session)
-        -> Result<String, DeleteMeError> {
-    let mut storage_write = storage.write().unwrap();
-    storage_write.delete_user(&session.username)?;
     Ok("Ok".to_owned())
 }
 
