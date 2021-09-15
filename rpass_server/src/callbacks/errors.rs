@@ -1,3 +1,5 @@
+use std::io;
+
 #[derive(thiserror::Error, Debug)]
 pub enum RegistrationError {
     #[error("empty username")]
@@ -13,7 +15,7 @@ pub enum RegistrationError {
     InvalidKey(#[from] rpass::key::ParseBigIntError),
 
     #[error("user already exists")]
-    AlreadyExists(#[from] std::io::Error)
+    AlreadyExists(#[from] io::Error)
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -22,7 +24,7 @@ pub enum LoginError {
     EmptyUsername,
 
     #[error("user doesn't exists")]
-    NoSuchUser(#[from] std::io::Error)
+    NoSuchUser(#[from] io::Error)
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -32,4 +34,10 @@ pub enum ConfirmLoginError {
 
     #[error("empty confirmation string")]
     EmptyConfirmationString
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum DeleteMeError {
+    #[error("unable to delete")]
+    UnableToDelete(#[from] io::Error)
 }

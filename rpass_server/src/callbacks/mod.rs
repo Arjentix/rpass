@@ -47,7 +47,7 @@ pub fn register(storage: AsyncStorage, arg_iter: ArgIter)
 /// The next step user should decrypt that random confirmation string,
 /// encrypt if with storage public key and send it back.
 /// 
-/// See `confirm_login` function for second part
+/// See [`confirm_login()`] function for second part
 /// 
 /// # Errors
 /// 
@@ -71,6 +71,7 @@ pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
 
     session.login_confirmation = Some(user_pub_key.encrypt(&rand_string));
     session.is_authorized = false;
+    session.username = username.to_owned();
     Ok(session.login_confirmation.as_ref().unwrap().clone())
 }
 
@@ -81,7 +82,7 @@ pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
 /// Sets `session.is_authorized` to *true* and returns *Ok("Ok")* if everything
 /// is good
 /// 
-/// See `confirm_login` function for second part
+/// See [`login()`] function for first part
 /// 
 /// # Errors
 /// 
@@ -110,6 +111,19 @@ pub fn confirm_login(storage: AsyncStorage, session: &mut Session, arg_iter: Arg
     
     session.login_confirmation = None;
     session.is_authorized = true;
+    Ok("Ok".to_owned())
+}
+
+/// Deletes current user. Takes *username* from `session` and deletes it in
+/// `storage`
+/// 
+/// # Errors
+/// 
+/// * `UnableToDelete` - if for some reason user's data can't be deleted
+pub fn delete_me(storage: AsyncStorage, session: &mut Session)
+        -> Result<String, DeleteMeError> {
+    let mut storage_write = storage.write().unwrap();
+    storage_write.delete_user(&session.username)?;
     Ok("Ok".to_owned())
 }
 
