@@ -1,4 +1,10 @@
-use super::{AsyncStorage, Session, errors::DeleteMeError};
+use super::{AsyncStorage, Session};
+
+#[derive(thiserror::Error, Debug)]
+pub enum DeleteMeError {
+    #[error("unable to delete")]
+    UnableToDelete(#[from] std::io::Error)
+}
 
 /// Deletes current user. Takes *username* from `session` and deletes it in
 /// `storage`

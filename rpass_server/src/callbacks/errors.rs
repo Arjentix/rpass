@@ -35,9 +35,3 @@ pub enum ConfirmLoginError {
     #[error("empty confirmation string")]
     EmptyConfirmationString
 }
-
-#[derive(thiserror::Error, Debug)]
-pub enum DeleteMeError {
-    #[error("unable to delete")]
-    UnableToDelete(#[from] io::Error)
-}
