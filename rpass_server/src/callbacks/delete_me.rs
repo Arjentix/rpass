@@ -36,7 +36,6 @@ mod tests {
         mock_storage.write().unwrap().expect_delete_user()
             .with(predicate::eq(TEST_USER)).returning(|_|Ok(()));
         let res = delete_me(mock_storage, &mut session);
-        assert!(res.is_ok());
         assert_eq!(res.unwrap(), "Ok".to_owned());
     }
 
