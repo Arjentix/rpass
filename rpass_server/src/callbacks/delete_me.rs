@@ -16,6 +16,7 @@ pub fn delete_me(storage: AsyncStorage, session: &mut Session)
         -> Result<String, DeleteMeError> {
     let mut storage_write = storage.write().unwrap();
     storage_write.delete_user(&session.username)?;
+    session.is_authorized = false;
     Ok("Ok".to_owned())
 }
 
@@ -36,7 +37,8 @@ mod tests {
         mock_storage.write().unwrap().expect_delete_user()
             .with(predicate::eq(TEST_USER)).returning(|_|Ok(()));
         let res = delete_me(mock_storage, &mut session);
-        assert_eq!(res.unwrap(), "Ok".to_owned());
+        assert_eq!(res.unwrap(), "Ok");
+        assert!(!session.is_authorized);
     }
 
     #[test]
