@@ -46,3 +46,53 @@ pub enum LoginError {
     #[error("user doesn't exists")]
     NoSuchUser(#[from] io::Error)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::storage::Key;
+    use std::str::FromStr;
+    use mockall::predicate;
+
+    const TEST_USER: &'static str = "test_user";
+
+    #[test]
+    fn test_ok() {
+        let mock_storage = AsyncStorage::default();
+        let mut session = Session::default();
+        let mut arg_iter = TEST_USER.split_whitespace();
+
+        mock_storage.write().unwrap().expect_get_user_pub_key().times(1)
+            .with(predicate::eq(TEST_USER))
+            .returning(|_| Ok(Key::from_str("11:11").unwrap()));
+
+        let res = login(mock_storage, &mut session, &mut arg_iter);
+        assert!(res.is_ok());
+        assert!(matches!(session.login_confirmation, Some(_)));
+        assert!(!session.is_authorized);
+        assert_eq!(session.username, TEST_USER);
+    }
+
+    #[test]
+    fn test_empty_username() {
+        let mock_storage = AsyncStorage::default();
+        let mut session = Session::default();
+        let mut arg_iter = "".split_whitespace();
+
+        let res = login(mock_storage, &mut session, &mut arg_iter);
+        assert!(matches!(res, Err(LoginError::EmptyUsername)));
+    }
+
+    #[test]
+    fn test_no_such_user() {
+        let mock_storage = AsyncStorage::default();
+        let mut session = Session::default();
+        let mut arg_iter = TEST_USER.split_whitespace();
+
+        mock_storage.write().unwrap().expect_get_user_pub_key().times(1)
+            .with(predicate::eq(TEST_USER))
+            .returning(|_| Err(io::Error::new(io::ErrorKind::NotFound, "")));
+        let res = login(mock_storage, &mut session, &mut arg_iter);
+        assert!(matches!(res, Err(LoginError::NoSuchUser(_))));
+    }
+}
