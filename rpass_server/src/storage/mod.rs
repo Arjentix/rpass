@@ -1,8 +1,12 @@
+mod record;
+
 pub use rpass::key::Key;
+pub use record::Record;
 
 use std::path::{Path, PathBuf};
 use std::fs;
 use std::io::{Result, Error, ErrorKind};
+use std::string::ToString;
 #[cfg(test)]
 use mockall::automock;
 
@@ -64,6 +68,23 @@ impl Storage {
     pub fn get_user_pub_key(&self, username: &str) -> Result<Key> {
         let pub_key_file = self.path.join(username).join(PUB_KEY_FILENAME);
         Key::from_bytes(&fs::read(pub_key_file)?)
+    }
+
+    /// Writes `record` into `username` directory with filename
+    /// `record.resource`
+    /// 
+    /// # Errors
+    /// 
+    /// Any error during file writing
+    pub fn write_record(&mut self, username: &str, record: Record)
+            -> Result<()> {
+        let user_dir = self.path.join(username);
+        if !user_dir.is_dir() {
+            return Err(Error::new(ErrorKind::NotFound, "user doesn't exist"));
+        }
+
+        let record_file = user_dir.join(&record.resource);
+        fs::write(record_file, record.to_string())
     }
 
     /// Gets storage public key
