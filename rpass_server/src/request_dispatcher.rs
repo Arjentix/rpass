@@ -1,10 +1,9 @@
 pub use anyhow::Error;
 
 use std::collections::HashMap;
-
 use crate::session::Session;
-
-pub type ArgIter<'a, 'b> =&'a mut dyn Iterator<Item=&'b str>;
+use regex::Regex;
+pub type ArgIter<'a> =&'a mut dyn Iterator<Item=String>;
 pub type Result<T> = std::result::Result<T, Error>;
 
 type Callback = dyn Fn(&mut Session, ArgIter) -> Result<String> + Send + Sync;
@@ -24,6 +23,11 @@ pub enum DispatchingError {
 
 use errors::*;
 
+lazy_static! {
+    static ref ARGUMENTS_REGEX: Regex
+            = Regex::new(r#"(?s)([^\s"]+|(?:".*?"))\s?+"#).unwrap();
+}
+
 #[derive(Default)]
 pub struct RequestDispatcher {
     command_to_callback: HashMap<String, Box<Callback>>
@@ -37,13 +41,14 @@ impl RequestDispatcher {
     }
 
     pub fn dispatch(&self, session: &mut Session, request: &str) -> Result<String> {
-        let mut iter = request.split_whitespace();
+        let mut iter = ARGUMENTS_REGEX.captures_iter(request)
+            .map(|x| x[1].trim_matches('\"').to_owned());
         let command = match iter.next() {
             Some(cmd) => cmd,
             None => return Err(Error::from(DispatchingError::NoCommandProvided))
         };
 
-        match self.command_to_callback.get(command) {
+        match self.command_to_callback.get(&command) {
             Some(callback) => callback(session, &mut iter),
             None => Err(Error::from(
                 DispatchingError::NoCallback(command.to_owned())))

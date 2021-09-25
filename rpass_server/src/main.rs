@@ -10,6 +10,8 @@ use std::sync::{Arc, RwLock};
 use callbacks::Storage;
 use request_dispatcher::{RequestDispatcher};
 use session::Session;
+#[macro_use]
+extern crate lazy_static;
 
 fn main() -> Result<()> {
     let home_dir = dirs::home_dir().ok_or(

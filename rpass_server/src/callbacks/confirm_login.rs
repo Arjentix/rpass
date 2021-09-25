@@ -31,7 +31,7 @@ pub fn confirm_login(storage: AsyncStorage, session: &mut Session,
         sec_key = storage_read.get_sec_key().clone();
     }
 
-    let confirmation = sec_key.decrypt(encrypted_confirmation);
+    let confirmation = sec_key.decrypt(&encrypted_confirmation);
     if &confirmation != session.login_confirmation.as_ref().unwrap() {
         return Err(ConfirmLoginError::InvalidConfirmationString);
     }

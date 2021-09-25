@@ -22,7 +22,7 @@ pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
 
     let user_pub_key = {
         let storage_read = storage.read().unwrap();
-        storage_read.get_user_pub_key(username)?
+        storage_read.get_user_pub_key(&username)?
     };
 
     const RAND_STRING_LENGTH: usize = 30;
@@ -34,7 +34,7 @@ pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
 
     session.login_confirmation = Some(user_pub_key.encrypt(&rand_string));
     session.is_authorized = false;
-    session.username = username.to_owned();
+    session.username = username;
     Ok(session.login_confirmation.as_ref().unwrap().clone())
 }
 

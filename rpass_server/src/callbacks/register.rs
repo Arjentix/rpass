@@ -36,12 +36,12 @@ pub enum RegistrationError {
 pub fn register(storage: AsyncStorage, arg_iter: ArgIter)
         -> Result<String, RegistrationError> {
     let username = arg_iter.next().ok_or(RegistrationError::EmptyUsername)?;
-    if !is_valid_username(username) {
-        return Err(RegistrationError::InvalidUsername(username.to_owned()));
+    if !is_valid_username(&username) {
+        return Err(RegistrationError::InvalidUsername(username));
     }
 
     let key_string = arg_iter.next().ok_or(RegistrationError::EmptyKey)?;
-    let key = Key::from_str(key_string)?;
+    let key = Key::from_str(&key_string)?;
 
     let mut storage_write = storage.write().unwrap();
     storage_write.add_new_user(&username, &key)?;
