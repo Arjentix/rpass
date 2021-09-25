@@ -76,7 +76,7 @@ impl Storage {
     /// # Errors
     /// 
     /// Any error during file writing
-    pub fn write_record(&mut self, username: &str, record: Record)
+    pub fn write_record(&mut self, username: &str, record: &Record)
             -> Result<()> {
         let user_dir = self.path.join(username);
         if !user_dir.is_dir() {
