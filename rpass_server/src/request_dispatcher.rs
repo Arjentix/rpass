@@ -42,7 +42,7 @@ impl RequestDispatcher {
 
     pub fn dispatch(&self, session: &mut Session, request: &str) -> Result<String> {
         let mut iter = ARGUMENTS_REGEX.captures_iter(request)
-            .map(|x| x[1].trim_matches('\"').to_owned());
+            .map(|x| strip_quotes(&x[1]).to_owned());
         let command = match iter.next() {
             Some(cmd) => cmd,
             None => return Err(Error::from(DispatchingError::NoCommandProvided))
@@ -54,4 +54,15 @@ impl RequestDispatcher {
                 DispatchingError::NoCallback(command.to_owned())))
         }
     }
+}
+
+/// Strips quotes `"` from start and end of `s`.
+/// Deletes only one symbol from start and end if is is equal to `"`
+fn strip_quotes(s: &str) -> &str {
+    if s.starts_with('\"') && s.ends_with('\"') {
+        return s.strip_prefix('\"').unwrap()
+            .strip_suffix('\"').unwrap()
+    }
+
+    s
 }
