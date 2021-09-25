@@ -19,7 +19,7 @@ pub struct Storage {
     sec_key: Key
 }
 
-#[cfg_attr(test, automock)]
+#[cfg_attr(test, automock, allow(dead_code))]
 impl Storage {
     /// Initializes storage from given path to storage folder
     /// 
