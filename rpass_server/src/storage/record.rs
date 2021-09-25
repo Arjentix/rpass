@@ -18,11 +18,13 @@ pub enum ParseRecordError {
 impl FromStr for Record {
     type Err = ParseRecordError;
 
-    /// Constructs new record from string
+    /// Constructs new record from string. Expects password and notes delimited
+    /// by new line character
     /// 
     /// *resource* field will be set to default
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (password, notes) = s.split_once('\n').ok_or(ParseRecordError::EmptyString)?;
+        let (password, notes) = s.split_once('\n')
+            .ok_or(ParseRecordError::EmptyString)?;
         Ok(Record {
             resource: String::default(),
             password: password.to_owned(), 
@@ -46,7 +48,8 @@ mod tests {
 
     #[test]
     fn test_from_str() {
-        assert!(matches!(Record::from_str(""), Err(ParseRecordError::EmptyString)));
+        assert!(matches!(Record::from_str(""),
+            Err(ParseRecordError::EmptyString)));
         assert_eq!(Record::from_str("secret\nnotes\nanother notes").unwrap(),
             Record {
                 resource: String::default(),
