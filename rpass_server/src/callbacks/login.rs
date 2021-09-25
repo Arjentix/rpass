@@ -60,7 +60,7 @@ mod tests {
     fn test_ok() {
         let mock_storage = AsyncStorage::default();
         let mut session = Session::default();
-        let mut arg_iter = TEST_USER.split_whitespace();
+        let mut arg_iter = [TEST_USER].iter().map(|&s| s.to_owned());
 
         mock_storage.write().unwrap().expect_get_user_pub_key().times(1)
             .with(predicate::eq(TEST_USER))
@@ -77,7 +77,7 @@ mod tests {
     fn test_empty_username() {
         let mock_storage = AsyncStorage::default();
         let mut session = Session::default();
-        let mut arg_iter = "".split_whitespace();
+        let mut arg_iter = [].iter().map(|s: &&str| s.to_string());
 
         let res = login(mock_storage, &mut session, &mut arg_iter);
         assert!(matches!(res, Err(LoginError::EmptyUsername)));
@@ -87,7 +87,7 @@ mod tests {
     fn test_no_such_user() {
         let mock_storage = AsyncStorage::default();
         let mut session = Session::default();
-        let mut arg_iter = TEST_USER.split_whitespace();
+        let mut arg_iter = [TEST_USER].iter().map(|&s| s.to_owned());
 
         mock_storage.write().unwrap().expect_get_user_pub_key().times(1)
             .with(predicate::eq(TEST_USER))

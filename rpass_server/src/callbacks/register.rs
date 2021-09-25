@@ -100,7 +100,7 @@ mod tests {
         .returning(|_, _| Ok(()));
 
         let args = TEST_USER.to_owned() + " " + KEY_STR;
-        let mut arg_iter = args.split_whitespace();
+        let mut arg_iter = args.split_whitespace().map(str::to_owned);
         let res = register(mock_storage, &mut arg_iter);
         assert_eq!(res.unwrap(), "Ok");
     }
@@ -109,7 +109,7 @@ mod tests {
     fn test_empty_username() {
         let mock_storage = AsyncStorage::default();
 
-        let mut arg_iter = "".split_whitespace();
+        let mut arg_iter = "".split_whitespace().map(str::to_owned);
         let res = register(mock_storage, &mut arg_iter);
         assert!(matches!(res, Err(RegistrationError::EmptyUsername)));
     }
@@ -119,7 +119,8 @@ mod tests {
         let mock_storage = AsyncStorage::default();
 
         const INVALID_USERNAME: &'static str = "_invalid_username_";
-        let mut arg_iter = INVALID_USERNAME.split_whitespace();
+        let mut arg_iter = INVALID_USERNAME.split_whitespace()
+            .map(str::to_owned);
 
         let res = register(mock_storage, &mut arg_iter);
         assert!(matches!(res,
@@ -131,7 +132,7 @@ mod tests {
     fn test_empty_key() {
         let mock_storage = AsyncStorage::default();
 
-        let mut arg_iter = "test_user".split_whitespace();
+        let mut arg_iter = "test_user".split_whitespace().map(str::to_owned);
         let res = register(mock_storage, &mut arg_iter);
         assert!(matches!(res, Err(RegistrationError::EmptyKey)));
     }
@@ -140,7 +141,8 @@ mod tests {
     fn test_invalid_key() {
         let mock_storage = AsyncStorage::default();
 
-        let mut arg_iter = "test_user key".split_whitespace();
+        let mut arg_iter = "test_user key".split_whitespace()
+            .map(str::to_owned);
         let res = register(mock_storage, &mut arg_iter);
         assert!(matches!(res, Err(RegistrationError::InvalidKey(_))));
     }
@@ -150,8 +152,10 @@ mod tests {
         let mock_storage = AsyncStorage::default();
 
         mock_storage.write().unwrap().expect_add_new_user().times(1)
-            .returning(|_, _| Err(io::Error::new(io::ErrorKind::AlreadyExists, "")));
-        let mut arg_iter = "test_user 11:11".split_whitespace();
+            .returning(|_, _|
+                Err(io::Error::new(io::ErrorKind::AlreadyExists, "")));
+        let mut arg_iter = "test_user 11:11".split_whitespace()
+            .map(str::to_owned);
         let res = register(mock_storage, &mut arg_iter);
         assert!(matches!(res, Err(RegistrationError::AlreadyExists(_))));
     }

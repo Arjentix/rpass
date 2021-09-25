@@ -69,7 +69,7 @@ mod tests {
         let (pub_key, sec_key) = Key::generate_pair();
         let encrypted_confirmation = pub_key.encrypt(
             session.login_confirmation.as_ref().unwrap());
-        let mut arg_iter = encrypted_confirmation.split_whitespace();
+        let mut arg_iter = encrypted_confirmation.split_whitespace().map(str::to_owned);
 
         mock_storage.write().unwrap().expect_get_sec_key().times(1)
             .return_const(sec_key);
@@ -88,7 +88,7 @@ mod tests {
             username : String::default()
         };
 
-        let mut arg_iter = "".split_whitespace();
+        let mut arg_iter = [""].iter().map(|&s| s.to_owned());
 
         let res = confirm_login(mock_storage.clone(), &mut session, &mut arg_iter);
         assert!(matches!(res,
@@ -109,7 +109,7 @@ mod tests {
             is_authorized: false,
             username: String::default()
         };
-        let mut arg_iter = "".split_whitespace();
+        let mut arg_iter = [].iter().map(|s: &&str| s.to_string());
 
         let res = confirm_login(mock_storage, &mut session, &mut arg_iter);
         assert!(matches!(res,
@@ -126,7 +126,7 @@ mod tests {
         };
         let (pub_key, sec_key) = Key::generate_pair();
         let encrypted_confirmation = pub_key.encrypt("wrong_confirmation");
-        let mut arg_iter = encrypted_confirmation.split_whitespace();
+        let mut arg_iter = encrypted_confirmation.split_whitespace().map(str::to_owned);
 
         mock_storage.write().unwrap().expect_get_sec_key().times(1)
             .return_const(sec_key);
