@@ -7,10 +7,9 @@ use super::Session;
 /// 
 /// # Errors
 /// 
-/// * `UnacceptableRequestAtThisState` - if user isn't authorized or session is
-/// already ended
+/// * `UnacceptableRequestAtThisState` - if session is already ended
 pub fn quit(session: &mut Session) -> Result<String, QuitError> {
-    if !session.is_authorized || session.is_ended {
+    if session.is_ended {
         return Err(QuitError::UnacceptableRequestAtThisState);
     }
 
@@ -42,17 +41,6 @@ mod tests {
         assert!(!session.is_authorized);
         assert_eq!(session.username, String::default());
         assert!(session.is_ended);
-    }
-
-    #[test]
-    fn test_not_authorized() {
-        let mut session = Session {
-            is_authorized: false,
-            .. Session::default()
-        };
-
-        assert!(matches!(quit(&mut session),
-            Err(QuitError::UnacceptableRequestAtThisState)));
     }
 
     #[test]
