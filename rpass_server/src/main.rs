@@ -29,7 +29,7 @@ fn main() -> Result<()> {
                 Ok(connection) => connection,
                 Err(_) => break
             };
-            log_connection(&stream);
+            log_connection(&stream, true);
 
             let request_dispatcher_clone = request_dispatcher.clone();
             let storage_clone = storage.clone();
@@ -74,19 +74,27 @@ fn build_request_dispatcher(storage : Arc<RwLock<Storage>>)
         .add_callback("new_record".to_owned(), move |session, arg_iter| {
             callbacks::new_record(new_record_storage.clone(), session, arg_iter)
                 .map_err(|err| err.into())
+        })
+        .add_callback("quit".to_owned(), |session, _| {
+            callbacks::quit(session).map_err(|err| err.into())
         });
     }
 
     request_dispatcher
 }
 
-/// Logs stream peer address to the stdout
-fn log_connection(stream: &TcpStream) {
+/// Logs `stream` peer address to the stdout. If `connected` prints info about
+/// successful connection. Else prints info about disconnection
+fn log_connection(stream: &TcpStream, connected: bool) {
     let addr = match stream.peer_addr() {
         Ok(peer_addr) => Cow::from(peer_addr.to_string()),
         Err(_) => Cow::from("unknown")
     };
-    println!("Connected with {}", addr);
+    if connected {
+        println!("Connected with {}", addr);
+    } else {
+        println!("Connection with {} closed", addr);
+    }
 }
 
 fn handle_client(mut stream: TcpStream,
@@ -99,7 +107,7 @@ fn handle_client(mut stream: TcpStream,
 
     send_storage_key(&mut stream, storage)?;
 
-    loop {
+    while !session.is_ended {
         if let Err(_) = reader.read_line(&mut request) {
             stream.write_all(
                 "Error: request should be in UTF-8 format\r\n".as_bytes())?;
@@ -121,6 +129,9 @@ fn handle_client(mut stream: TcpStream,
         stream.write_all(response.as_bytes())?;
         request.clear();
     }
+
+    log_connection(&stream, false);
+    Ok(())
 }
 
 /// Sends storage pub key to the stream
