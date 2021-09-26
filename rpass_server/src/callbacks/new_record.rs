@@ -72,9 +72,9 @@ mod tests {
         };
         let mock_storage = AsyncStorage::default();
         let session = Session {
-            login_confirmation: None,
             is_authorized: true,
-            username : TEST_USER.to_owned()
+            username : TEST_USER.to_owned(),
+            .. Session::default()
         };
         let args = [RESOURCE.to_owned(), content];
         let mut arg_iter = args.iter().cloned();
@@ -92,9 +92,8 @@ mod tests {
 
         let mock_storage = AsyncStorage::default();
         let session = Session {
-            login_confirmation: None,
-            is_authorized: false,
-            username : TEST_USER.to_owned()
+            username : TEST_USER.to_owned(),
+            .. Session::default()
         };
         let args = [RESOURCE.to_owned(), content];
         let mut arg_iter = args.iter().cloned();
@@ -107,9 +106,9 @@ mod tests {
     fn test_empty_resource() {
         let mock_storage = AsyncStorage::default();
         let session = Session {
-            login_confirmation: None,
             is_authorized: true,
-            username : TEST_USER.to_owned()
+            username : TEST_USER.to_owned(),
+            .. Session::default()
         };
         let args = [];
         let mut arg_iter = args.iter().cloned();
@@ -122,9 +121,9 @@ mod tests {
     fn test_empty_record_content() {
         let mock_storage = AsyncStorage::default();
         let session = Session {
-            login_confirmation: None,
             is_authorized: true,
-            username : TEST_USER.to_owned()
+            username : TEST_USER.to_owned(),
+            .. Session::default()
         };
         let args = [RESOURCE.to_owned()];
         let mut arg_iter = args.iter().cloned();
@@ -138,9 +137,9 @@ mod tests {
         let content = String::from(PASSWORD);
         let mock_storage = AsyncStorage::default();
         let session = Session {
-            login_confirmation: None,
             is_authorized: true,
-            username : TEST_USER.to_owned()
+            username : TEST_USER.to_owned(),
+            .. Session::default()
         };
         let args = [RESOURCE.to_owned(), content];
         let mut arg_iter = args.iter().cloned();
@@ -160,9 +159,9 @@ mod tests {
         };
         let mock_storage = AsyncStorage::default();
         let session = Session {
-            login_confirmation: None,
             is_authorized: true,
-            username : TEST_USER.to_owned()
+            username : TEST_USER.to_owned(),
+            .. Session::default()
         };
         let args = [RESOURCE.to_owned(), content];
         let mut arg_iter = args.iter().cloned();

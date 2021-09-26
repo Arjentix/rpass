@@ -63,8 +63,7 @@ mod tests {
         let mock_storage = AsyncStorage::default();
         let mut session = Session {
             login_confirmation: Some(String::from("confirmation")),
-            is_authorized: false,
-            username: String::default()
+            .. Session::default()
         };
         let (pub_key, sec_key) = Key::generate_pair();
         let encrypted_confirmation = pub_key.encrypt(
@@ -82,11 +81,7 @@ mod tests {
     #[test]
     fn test_unacceptable_request_at_this_state() {
         let mock_storage = AsyncStorage::default();
-        let mut session = Session {
-            login_confirmation : None,
-            is_authorized : false,
-            username : String::default()
-        };
+        let mut session = Session::default();
 
         let mut arg_iter = [""].iter().map(|&s| s.to_owned());
 
@@ -106,8 +101,7 @@ mod tests {
         let mock_storage = AsyncStorage::default();
         let mut session = Session {
             login_confirmation: Some(String::default()),
-            is_authorized: false,
-            username: String::default()
+            .. Session::default()
         };
         let mut arg_iter = [].iter().map(|s: &&str| s.to_string());
 
@@ -121,8 +115,7 @@ mod tests {
         let mock_storage = AsyncStorage::default();
         let mut session = Session {
             login_confirmation: Some(String::from("confirmation")),
-            is_authorized: false,
-            username: String::default()
+            .. Session::default()
         };
         let (pub_key, sec_key) = Key::generate_pair();
         let encrypted_confirmation = pub_key.encrypt("wrong_confirmation");
