@@ -102,17 +102,20 @@ fn handle_client(mut stream: TcpStream,
         request_dispatcher: Arc<RwLock<RequestDispatcher>>)
         -> Result<()> {
     let mut reader = BufReader::new(stream.try_clone()?);
-    let mut request = String::new();
     let mut session = Session::default();
 
     send_storage_key(&mut stream, storage)?;
 
     while !session.is_ended {
-        if let Err(_) = reader.read_line(&mut request) {
-            stream.write_all(
-                "Error: request should be in UTF-8 format\r\n".as_bytes())?;
-            continue;
-        }
+        let bytes = read_request_bytes(&mut reader)?;
+        let mut request = match String::from_utf8(bytes) {
+            Err(_) => {
+                stream.write_all(
+                    "Error: request should be in UTF-8 format\r\n".as_bytes())?;
+                continue;
+            },
+            Ok(request) => request
+        };
         request = request.trim().to_owned();
         println!("request = \"{}\"", request);
 
@@ -141,4 +144,15 @@ fn send_storage_key(stream: &mut TcpStream, storage: Arc<RwLock<Storage>>)
     let pub_key = storage_read.get_pub_key();
     let message = pub_key.to_string() + "\r\n";
     stream.write_all(message.as_bytes())
+}
+
+/// Reads bytes from `reader` until EOT byte is captured.
+/// Returns bytes without EOT byte
+fn read_request_bytes(reader: &mut BufReader<TcpStream>) -> Result<Vec<u8>> {
+    const EOT: u8 = 0x04;
+    let mut buf = vec![];
+    reader.read_until(EOT, &mut buf)?;
+    buf.pop();
+
+    Ok(buf)
 }
