@@ -54,28 +54,28 @@ fn build_request_dispatcher(storage : Arc<RwLock<Storage>>)
 
         let mut dispatcher_write = request_dispatcher.write().unwrap();
         dispatcher_write
-        .add_callback("register".to_owned(), move |_, arg_iter| {
+        .add_callback(Cow::from("register"), move |_, arg_iter| {
             callbacks::register(register_storage.clone(), arg_iter)
                 .map_err(|err| err.into())
         })
-        .add_callback("login".to_owned(), move |session, arg_iter| {
+        .add_callback(Cow::from("login"), move |session, arg_iter| {
             callbacks::login(login_storage.clone(), session, arg_iter)
                 .map_err(|err| err.into())
         })
-        .add_callback("confirm_login".to_owned(), move |session, arg_iter| {
+        .add_callback(Cow::from("confirm_login"), move |session, arg_iter| {
             callbacks::confirm_login(
                 confirm_login_storage.clone(), session, arg_iter)
                 .map_err(|err| err.into())
         })
-        .add_callback("delete_me".to_owned(), move |session, _| {
+        .add_callback(Cow::from("delete_me"), move |session, _| {
             callbacks::delete_me(delete_me_storage.clone(), session)
                 .map_err(|err| err.into())
         })
-        .add_callback("new_record".to_owned(), move |session, arg_iter| {
+        .add_callback(Cow::from("new_record"), move |session, arg_iter| {
             callbacks::new_record(new_record_storage.clone(), session, arg_iter)
                 .map_err(|err| err.into())
         })
-        .add_callback("quit".to_owned(), |session, _| {
+        .add_callback(Cow::from("quit"), |session, _| {
             callbacks::quit(session).map_err(|err| err.into())
         });
     }

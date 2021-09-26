@@ -1,3 +1,4 @@
+pub use std::borrow::Cow;
 pub use anyhow::Error;
 
 use std::collections::HashMap;
@@ -10,13 +11,15 @@ type Callback = dyn Fn(&mut Session, ArgIter) -> Result<String> + Send + Sync;
 
 mod errors {
 
+use super::Cow;
+
 #[derive(thiserror::Error, Debug)]
 pub enum DispatchingError {
     #[error("command wasn't provided")]
     NoCommandProvided,
 
     #[error("there is no callback for command `{0}`")]
-    NoCallback(String)
+    NoCallback(Cow<'static, str>)
 }
 
 }
@@ -30,11 +33,11 @@ lazy_static! {
 
 #[derive(Default)]
 pub struct RequestDispatcher {
-    command_to_callback: HashMap<String, Box<Callback>>
+    command_to_callback: HashMap<Cow<'static, str>, Box<Callback>>
 }
 
 impl RequestDispatcher {
-    pub fn add_callback<C>(&mut self, command: String, callback: C) -> &mut Self
+    pub fn add_callback<C>(&mut self, command: Cow<'static, str>, callback: C) -> &mut Self
         where C: Fn(&mut Session, ArgIter) -> Result<String> + Send + Sync + 'static {
         self.command_to_callback.insert(command, Box::new(callback));
         self
@@ -44,14 +47,14 @@ impl RequestDispatcher {
         let mut iter = ARGUMENTS_REGEX.captures_iter(request)
             .map(|x| strip_quotes(&x[1]).to_owned());
         let command = match iter.next() {
-            Some(cmd) => cmd,
+            Some(cmd) => Cow::from(cmd),
             None => return Err(Error::from(DispatchingError::NoCommandProvided))
         };
 
         match self.command_to_callback.get(&command) {
             Some(callback) => callback(session, &mut iter),
             None => Err(Error::from(
-                DispatchingError::NoCallback(command.to_owned())))
+                DispatchingError::NoCallback(command)))
         }
     }
 }
