@@ -4,7 +4,6 @@ pub mod confirm_login;
 pub mod delete_me;
 pub mod new_record;
 
-#[mockall_double::double]
 pub use crate::storage::Storage;
 pub use register::register;
 pub use login::login;
