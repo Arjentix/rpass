@@ -2,7 +2,7 @@ use std::str::FromStr;
 use std::result::Result;
 
 /// User record with password
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Default, Debug, PartialEq, Eq)]
 pub struct Record {
     pub resource: String, // Resource to store password from
     pub password: String, // Password, encrypted with user public key
