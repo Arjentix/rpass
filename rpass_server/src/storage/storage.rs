@@ -2,8 +2,9 @@ use super::Key;
 use super::Record;
 use std::path::{Path, PathBuf};
 use std::fs;
-use std::io::{Result, Error, ErrorKind};
+use std::io;
 use std::string::ToString;
+use std::str::FromStr;
 
 #[cfg(test)]
 use mockall::automock;
@@ -16,6 +17,23 @@ pub struct Storage {
     pub_key: Key,
     sec_key: Key
 }
+
+#[derive(thiserror::Error, Debug)]
+pub enum StorageError {
+    #[error("io error: {0}")]
+    IoError(#[from] io::Error),
+
+    #[error("Storage path {0} is not a directory")]
+    StoragePathIsNotADirectory(PathBuf),
+
+    #[error("user {0} doesn't exist")]
+    UserDoesNotExist(String),
+
+    #[error("record parsing error: {0}")]
+    RecordParsingError(#[from] <Record as FromStr>::Err)
+}
+
+pub type Result<T> = std::result::Result<T, StorageError>;
 
 #[cfg_attr(test, automock, allow(dead_code))]
 impl Storage {
@@ -46,7 +64,7 @@ impl Storage {
         let user_dir = self.path.join(username);
         let pub_key_file = user_dir.join(PUB_KEY_FILENAME);
         fs::create_dir(user_dir)?;
-        fs::write(pub_key_file, pub_key.as_bytes())
+        fs::write(pub_key_file, pub_key.as_bytes()).map_err(|err| err.into())
     }
 
     /// Deletes user's files and directory
@@ -55,7 +73,7 @@ impl Storage {
     /// 
     /// See [`std::fs::remove_dir_all()`]
     pub fn delete_user(&mut self, username: &str) -> Result<()> {
-        fs::remove_dir_all(self.path.join(username))
+        fs::remove_dir_all(self.path.join(username)).map_err(|err| err.into())
     }
 
     /// Reads and returns user public key
@@ -65,7 +83,7 @@ impl Storage {
     /// Any error during file reading
     pub fn get_user_pub_key(&self, username: &str) -> Result<Key> {
         let pub_key_file = self.path.join(username).join(PUB_KEY_FILENAME);
-        Key::from_bytes(&fs::read(pub_key_file)?)
+        Key::from_bytes(&fs::read(pub_key_file)?).map_err(|err| err.into())
     }
 
     /// Writes `record` into `username` directory with filename
@@ -76,13 +94,22 @@ impl Storage {
     /// Any error during file writing
     pub fn write_record(&mut self, username: &str, record: &Record)
             -> Result<()> {
-        let user_dir = self.path.join(username);
-        if !user_dir.is_dir() {
-            return Err(Error::new(ErrorKind::NotFound, "user doesn't exist"));
-        }
+        let user_dir = self.get_user_dir(username)?;
 
         let record_file = user_dir.join(&record.resource);
-        fs::write(record_file, record.to_string())
+        fs::write(record_file, record.to_string()).map_err(|err| err.into())
+    }
+
+    /// Gets record about `resource` from `username` directory
+    pub fn get_record(&self, username: &str, resource: &str) -> Result<Record> {
+        let user_dir = self.get_user_dir(username)?;
+
+        let record_file = user_dir.join(resource);
+        let record_str = fs::read_to_string(record_file)?;
+        Ok(Record {
+            resource: resource.to_owned(),
+            .. Record::from_str(&record_str)?
+        })
     }
 
     /// Gets storage public key
@@ -93,6 +120,15 @@ impl Storage {
     /// Gets storage secret key
     pub fn get_sec_key(&self) -> &Key {
         &self.sec_key
+    }
+
+    /// Gets user directory, performing checking
+    fn get_user_dir(&self, username: &str) -> Result<PathBuf> {
+        let user_dir = self.path.join(username);
+        if !user_dir.is_dir() {
+            return Err(StorageError::UserDoesNotExist(username.to_owned()));
+        }
+        Ok(user_dir)
     }
 
     /// Open storage directory
@@ -111,17 +147,11 @@ impl Storage {
             return Self::init_keys(path);
         } else if !path.is_dir() {
             return Err(
-                Error::new(
-                    ErrorKind::AlreadyExists,
-                    format!(
-                       "{} {:?} is not a directory. Aborting...",
-                       DIRECTORY_MESSAGE_PREFIX, path
-                    )
-                )
+                StorageError::StoragePathIsNotADirectory(path.to_owned())
             );
-        } else {
-            println!("{} is {:?}", DIRECTORY_MESSAGE_PREFIX, path);
         }
+
+        println!("{} is {:?}", DIRECTORY_MESSAGE_PREFIX, path);
         Ok(())
     }
 
