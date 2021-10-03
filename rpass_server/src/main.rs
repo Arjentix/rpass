@@ -51,6 +51,7 @@ fn build_request_dispatcher(storage : Arc<RwLock<Storage>>)
         let confirm_login_storage = storage.clone();
         let delete_me_storage = storage.clone();
         let new_record_storage = storage.clone();
+        let show_record_storage = storage.clone();
 
         let mut dispatcher_write = request_dispatcher.write().unwrap();
         dispatcher_write
@@ -71,12 +72,17 @@ fn build_request_dispatcher(storage : Arc<RwLock<Storage>>)
             callbacks::delete_me(delete_me_storage.clone(), session)
                 .map_err(|err| err.into())
         })
+        .add_callback(Cow::from("quit"), |session, _| {
+            callbacks::quit(session).map_err(|err| err.into())
+        })
         .add_callback(Cow::from("new_record"), move |session, arg_iter| {
             callbacks::new_record(new_record_storage.clone(), session, arg_iter)
                 .map_err(|err| err.into())
         })
-        .add_callback(Cow::from("quit"), |session, _| {
-            callbacks::quit(session).map_err(|err| err.into())
+        .add_callback(Cow::from("show_record"), move |session, arg_iter| {
+            callbacks::show_record(
+                show_record_storage.clone(), session, arg_iter)
+                .map_err(|err| err.into())
         });
     }
 
