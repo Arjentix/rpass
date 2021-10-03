@@ -64,7 +64,7 @@ mod tests {
     fn test_ok() {
         let content = String::from(PASSWORD) + "\n" + NOTES;
 
-        let expected_record: Record = Record {
+        let expected_record = storage::Record {
             resource: RESOURCE.to_owned(),
             password: PASSWORD.to_owned(),
             notes: NOTES.to_owned()
@@ -151,7 +151,7 @@ mod tests {
     fn test_storage_error() {
         let content = String::from(PASSWORD) + "\n" + NOTES;
 
-        let expected_record: Record = Record {
+        let expected_record = storage::Record {
             resource: RESOURCE.to_owned(),
             password: PASSWORD.to_owned(),
             notes: NOTES.to_owned()
@@ -167,8 +167,12 @@ mod tests {
 
         mock_storage.write().unwrap().expect_write_record().times(1)
             .with(predicate::eq(TEST_USER), predicate::eq(expected_record))
-            .returning(|_, _| Err(io::Error::new(io::ErrorKind::Other, "")));
+            .returning(|_, _|
+                Err(storage::Error::IoError(
+                    io::Error::new(io::ErrorKind::Other, ""))
+                )
+            );
         assert!(matches!(new_record(mock_storage, &session, &mut arg_iter),
-            Err(NewRecordError::CantCreateRecord(_))));
+            Err(NewRecordError::StorageError(_))));
     }
 }

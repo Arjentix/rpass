@@ -49,7 +49,13 @@ mod tests {
 
         mock_storage.write().unwrap().expect_delete_user()
             .with(predicate::eq(TEST_USER))
-            .returning(|_|Err(io::Error::new(io::ErrorKind::Other, "")));
+            .returning(|_|
+                Err(
+                    storage::Error::IoError(
+                        io::Error::new(io::ErrorKind::Other, "")
+                    )
+                )
+            );
         assert!(delete_me(mock_storage, &mut session).is_err());
     }
 }

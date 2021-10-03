@@ -94,6 +94,6 @@ mod tests {
                 storage::Error::UserDoesNotExist(TEST_USER.to_owned())
             ));
         let res = login(mock_storage, &mut session, &mut arg_iter);
-        assert!(matches!(res, Err(LoginError::storage::Error(_))));
+        assert!(matches!(res, Err(LoginError::StorageError(_))));
     }
 }

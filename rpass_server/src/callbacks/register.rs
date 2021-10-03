@@ -84,7 +84,6 @@ fn is_contains_two_dots(s: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io;
     use mockall::predicate;
 
     #[test]
@@ -153,11 +152,11 @@ mod tests {
 
         mock_storage.write().unwrap().expect_add_new_user().times(1)
             .returning(|_, _|
-                Err(storage::Error::UserAlreadyExists("test_user")));
+                Err(storage::Error::UserAlreadyExists("test_user".to_owned())));
         let mut arg_iter = "test_user 11:11".split_whitespace()
             .map(str::to_owned);
         let res = register(mock_storage, &mut arg_iter);
-        assert!(matches!(res, Err(RegistrationError::AlreadyExists(_))));
+        assert!(matches!(res, Err(RegistrationError::StorageError(_))));
     }
 
     #[test]
