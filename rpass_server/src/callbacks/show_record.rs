@@ -31,3 +31,83 @@ pub enum ShowRecordError {
     #[error("storage error: {0}")]
     StorageError(#[from] storage::Error)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str::FromStr;
+    use mockall::predicate;
+
+    const TEST_USER: &'static str = "test_user";
+    const TEST_RESOURCE: &'static str = "example.com";
+
+    #[test]
+    fn test_ok() {
+        let mock_storage = AsyncStorage::default();
+        let session = Session {
+            is_authorized: true,
+            username : TEST_USER.to_owned(),
+            .. Session::default()
+        };
+        let args = [TEST_RESOURCE.to_owned()];
+        let mut arg_iter = args.iter().cloned();
+
+        mock_storage.write().unwrap().expect_get_record().times(1)
+            .with(predicate::eq(TEST_USER), predicate::eq(TEST_RESOURCE))
+            .returning(|_, _| Ok(storage::Record::default()));
+        assert!(show_record(mock_storage, &session, &mut arg_iter).is_ok());
+    }
+
+    #[test]
+    fn test_non_authorized() {
+        let mock_storage = AsyncStorage::default();
+        let session = Session {
+            username : TEST_USER.to_owned(),
+            .. Session::default()
+        };
+        let args = [TEST_RESOURCE.to_owned()];
+        let mut arg_iter = args.iter().cloned();
+
+        assert!(matches!(show_record(mock_storage, &session, &mut arg_iter),
+            Err(ShowRecordError::UnacceptableRequestAtThisState)));
+    }
+
+    #[test]
+    fn test_empty_resource() {
+        let mock_storage = AsyncStorage::default();
+        let session = Session {
+            is_authorized: true,
+            username : TEST_USER.to_owned(),
+            .. Session::default()
+        };
+        let args = [];
+        let mut arg_iter = args.iter().cloned();
+
+        assert!(matches!(show_record(mock_storage, &session, &mut arg_iter),
+            Err(ShowRecordError::EmptyResourceName)));
+    }
+
+    #[test]
+    fn test_storage_error() {
+        let mock_storage = AsyncStorage::default();
+        let session = Session {
+            is_authorized: true,
+            username : TEST_USER.to_owned(),
+            .. Session::default()
+        };
+        let args = [TEST_RESOURCE.to_owned()];
+        let mut arg_iter = args.iter().cloned();
+
+        mock_storage.write().unwrap().expect_get_record().times(1)
+            .with(predicate::eq(TEST_USER), predicate::eq(TEST_RESOURCE))
+            .returning(|_, _| 
+                Err(
+                    storage::Error::RecordParsingError(
+                        <storage::Record as FromStr>::Err::EmptyString
+                    )
+                )
+            );
+        assert!(matches!(show_record(mock_storage, &session, &mut arg_iter),
+            Err(ShowRecordError::StorageError(_))));
+    }
+}
