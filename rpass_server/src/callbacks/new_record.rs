@@ -1,5 +1,4 @@
-use super::{AsyncStorage, Session, ArgIter};
-use crate::storage::Record;
+use super::{AsyncStorage, Record, Session, ArgIter};
 use std::str::FromStr;
 
 /// Adds new record for user `session.username`.
