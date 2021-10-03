@@ -19,12 +19,15 @@ pub struct Storage {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum StorageError {
+pub enum Error {
     #[error("io error: {0}")]
     IoError(#[from] io::Error),
 
     #[error("Storage path {0} is not a directory")]
     StoragePathIsNotADirectory(PathBuf),
+
+    #[error("user {0} already exists")]
+    UserAlreadyExists(String),
 
     #[error("user {0} doesn't exist")]
     UserDoesNotExist(String),
@@ -33,7 +36,7 @@ pub enum StorageError {
     RecordParsingError(#[from] <Record as FromStr>::Err)
 }
 
-pub type Result<T> = std::result::Result<T, StorageError>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 #[cfg_attr(test, automock, allow(dead_code))]
 impl Storage {
@@ -63,7 +66,8 @@ impl Storage {
             -> Result<()> {
         let user_dir = self.path.join(username);
         let pub_key_file = user_dir.join(PUB_KEY_FILENAME);
-        fs::create_dir(user_dir)?;
+        fs::create_dir(user_dir)
+            .map_err(|_| Error::UserAlreadyExists(username.to_owned()))?;
         fs::write(pub_key_file, pub_key.as_bytes()).map_err(|err| err.into())
     }
 
@@ -83,6 +87,9 @@ impl Storage {
     /// Any error during file reading
     pub fn get_user_pub_key(&self, username: &str) -> Result<Key> {
         let pub_key_file = self.path.join(username).join(PUB_KEY_FILENAME);
+        if !pub_key_file.exists() {
+            return Err(Error::UserDoesNotExist(username.to_owned()));
+        }
         Key::from_bytes(&fs::read(pub_key_file)?).map_err(|err| err.into())
     }
 
@@ -126,7 +133,7 @@ impl Storage {
     fn get_user_dir(&self, username: &str) -> Result<PathBuf> {
         let user_dir = self.path.join(username);
         if !user_dir.is_dir() {
-            return Err(StorageError::UserDoesNotExist(username.to_owned()));
+            return Err(Error::UserDoesNotExist(username.to_owned()));
         }
         Ok(user_dir)
     }
@@ -147,7 +154,7 @@ impl Storage {
             return Self::init_keys(path);
         } else if !path.is_dir() {
             return Err(
-                StorageError::StoragePathIsNotADirectory(path.to_owned())
+                Error::StoragePathIsNotADirectory(path.to_owned())
             );
         }
 

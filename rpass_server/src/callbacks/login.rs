@@ -1,5 +1,4 @@
-use super::{AsyncStorage, Session, ArgIter};
-use std::io;
+use super::{storage, AsyncStorage, Session, ArgIter};
 use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
 
@@ -43,8 +42,8 @@ pub enum LoginError {
     #[error("empty username")]
     EmptyUsername,
 
-    #[error("user doesn't exists")]
-    NoSuchUser(#[from] io::Error)
+    #[error("storage error: {0}")]
+    StorageError(#[from] storage::Error)
 }
 
 #[cfg(test)]
@@ -91,8 +90,10 @@ mod tests {
 
         mock_storage.write().unwrap().expect_get_user_pub_key().times(1)
             .with(predicate::eq(TEST_USER))
-            .returning(|_| Err(io::Error::new(io::ErrorKind::NotFound, "")));
+            .returning(|_| Err(
+                storage::Error::UserDoesNotExist(TEST_USER.to_owned())
+            ));
         let res = login(mock_storage, &mut session, &mut arg_iter);
-        assert!(matches!(res, Err(LoginError::NoSuchUser(_))));
+        assert!(matches!(res, Err(LoginError::storage::Error(_))));
     }
 }

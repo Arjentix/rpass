@@ -1,24 +1,6 @@
-use super::{AsyncStorage, ArgIter};
+use super::{storage, AsyncStorage, ArgIter};
 use crate::storage::Key;
 use std::str::FromStr;
-
-#[derive(thiserror::Error, Debug)]
-pub enum RegistrationError {
-    #[error("empty username")]
-    EmptyUsername,
-
-    #[error("invalid username: {0}")]
-    InvalidUsername(String),
-
-    #[error("empty key")]
-    EmptyKey,
-
-    #[error("invalid key: `{0}`")]
-    InvalidKey(#[from] rpass::key::ParseBigIntError),
-
-    #[error("user already exists")]
-    AlreadyExists(#[from] std::io::Error)
-}
 
 /// Registers new user in `storage` with username and key taken from `arg_iter`
 /// 
@@ -47,6 +29,24 @@ pub fn register(storage: AsyncStorage, arg_iter: ArgIter)
     storage_write.add_new_user(&username, &key)?;
 
     Ok("Ok".to_owned())
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum RegistrationError {
+    #[error("empty username")]
+    EmptyUsername,
+
+    #[error("invalid username: {0}")]
+    InvalidUsername(String),
+
+    #[error("empty key")]
+    EmptyKey,
+
+    #[error("invalid key: `{0}`")]
+    InvalidKey(#[from] rpass::key::ParseBigIntError),
+
+    #[error("storage error: {0}")]
+    StorageError(#[from] storage::Error)
 }
 
 /// Checks if `username` is a valid string. 
@@ -153,7 +153,7 @@ mod tests {
 
         mock_storage.write().unwrap().expect_add_new_user().times(1)
             .returning(|_, _|
-                Err(io::Error::new(io::ErrorKind::AlreadyExists, "")));
+                Err(storage::Error::UserAlreadyExists("test_user")));
         let mut arg_iter = "test_user 11:11".split_whitespace()
             .map(str::to_owned);
         let res = register(mock_storage, &mut arg_iter);

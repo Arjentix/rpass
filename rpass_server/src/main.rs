@@ -1,19 +1,19 @@
-mod storage;
+pub mod storage;
 mod request_dispatcher;
 mod callbacks;
 mod session;
 
 use std::net::{TcpListener, TcpStream};
-use std::io::{Result, BufRead, BufReader, Write, Error, ErrorKind};
+use std::io::{self, BufRead, BufReader, Write, Error, ErrorKind};
 use std::borrow::Cow;
 use std::sync::{Arc, RwLock};
-use callbacks::Storage;
+use storage::Storage;
 use request_dispatcher::{RequestDispatcher};
 use session::Session;
 #[macro_use]
 extern crate lazy_static;
 
-fn main() -> Result<()> {
+fn main() -> Result<(), anyhow::Error> {
     let home_dir = dirs::home_dir().ok_or(
         Error::new(ErrorKind::NotFound, "Can't open home directory"))?;
     let path = home_dir.join(".rpass_storage");
@@ -100,7 +100,7 @@ fn log_connection(stream: &TcpStream, connected: bool) {
 fn handle_client(mut stream: TcpStream,
         storage: Arc<RwLock<Storage>>,
         request_dispatcher: Arc<RwLock<RequestDispatcher>>)
-        -> Result<()> {
+        -> io::Result<()> {
     let mut reader = BufReader::new(stream.try_clone()?);
     let mut session = Session::default();
 
@@ -139,7 +139,7 @@ fn handle_client(mut stream: TcpStream,
 
 /// Sends storage pub key to the stream
 fn send_storage_key(stream: &mut TcpStream, storage: Arc<RwLock<Storage>>)
-        -> Result<()> {
+        -> io::Result<()> {
     let storage_read = storage.read().unwrap();
     let pub_key = storage_read.get_pub_key();
     let message = pub_key.to_string() + "\r\n";
@@ -148,7 +148,7 @@ fn send_storage_key(stream: &mut TcpStream, storage: Arc<RwLock<Storage>>)
 
 /// Reads bytes from `reader` until EOT byte is captured.
 /// Returns bytes without EOT byte
-fn read_request_bytes(reader: &mut BufReader<TcpStream>) -> Result<Vec<u8>> {
+fn read_request_bytes(reader: &mut BufReader<TcpStream>) -> io::Result<Vec<u8>> {
     const EOT: u8 = 0x04;
     let mut buf = vec![];
     reader.read_until(EOT, &mut buf)?;

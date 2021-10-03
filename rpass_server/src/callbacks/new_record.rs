@@ -1,4 +1,4 @@
-use super::{AsyncStorage, Record, Session, ArgIter};
+use super::{storage, AsyncStorage, Session, ArgIter};
 use std::str::FromStr;
 
 /// Adds new record for user `session.username`.
@@ -20,9 +20,9 @@ pub fn new_record(storage: AsyncStorage, session: &Session, arg_iter: ArgIter)
 
     let resource = arg_iter.next().ok_or(NewRecordError::EmptyResourceName)?
         .to_owned();
-    let record = Record {
+    let record = storage::Record {
         resource, ..
-        Record::from_str(
+        storage::Record::from_str(
             &arg_iter.next().ok_or(NewRecordError::EmptyRecordContent)?)?
     };
 
@@ -43,10 +43,10 @@ pub enum NewRecordError {
     EmptyRecordContent,
 
     #[error("invalid record format")]
-    InvalidRecordFormat(#[from] <Record as FromStr>::Err),
+    InvalidRecordFormat(#[from] <storage::Record as FromStr>::Err),
 
-    #[error("can't create record")]
-    CantCreateRecord(#[from] std::io::Error)
+    #[error("storage error: {0}")]
+    StorageError(#[from] storage::Error)
 }
 
 #[cfg(test)]

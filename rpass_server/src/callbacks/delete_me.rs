@@ -1,10 +1,4 @@
-use super::{AsyncStorage, Session};
-
-#[derive(thiserror::Error, Debug)]
-pub enum DeleteMeError {
-    #[error("unable to delete")]
-    UnableToDelete(#[from] std::io::Error)
-}
+use super::{storage, AsyncStorage, Session};
 
 /// Deletes current user. Takes *username* from `session` and deletes it in
 /// `storage`
@@ -18,6 +12,12 @@ pub fn delete_me(storage: AsyncStorage, session: &mut Session)
     storage_write.delete_user(&session.username)?;
     session.is_authorized = false;
     Ok("Ok".to_owned())
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum DeleteMeError {
+    #[error("storage error: {0}")]
+    StorageError(#[from] storage::Error)
 }
 
 #[cfg(test)]
