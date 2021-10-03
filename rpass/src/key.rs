@@ -69,8 +69,16 @@ impl Key {
     }
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum ParseKeyError {
+    #[error("invalid key format")]
+    InvalidKeyFormat,
+    #[error("Error parsing big int: {0}")]
+    ParseBigIntError(#[from] ParseBigIntError)
+}
+
 impl FromStr for Key {
-    type Err = ParseBigIntError;
+    type Err = ParseKeyError;
 
     /// Constructs new key from string in format `<first_num>:<second_num>`
     /// 
@@ -85,9 +93,13 @@ impl FromStr for Key {
     /// assert_eq!(key.1, 19634u64.to_biguint().unwrap());
     /// ```
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        let mut part_iter = s.split(':');
-        Ok(Key(BigUint::from_str(part_iter.next().unwrap_or(""))?,
-            BigUint::from_str(part_iter.next().unwrap_or(""))?))
+        let (pub_part, sec_part) = s.split_once(":")
+            .ok_or(ParseKeyError::InvalidKeyFormat)?;
+        if pub_part.is_empty() || sec_part.is_empty() {
+            return Err(ParseKeyError::InvalidKeyFormat);
+        }
+        Ok(Key(BigUint::from_str(pub_part)?,
+            BigUint::from_str(sec_part)?))
     }
 }
 
@@ -158,21 +170,19 @@ mod tests {
     }
 
     #[test]
-    fn test_from_str_empty() {
-        assert!(Key::from_str("").is_err());
-    }
-
-    #[test]
-    fn test_from_str_one_part() {
-        assert!(Key::from_str("156").is_err());
-        assert!(Key::from_str("19704:").is_err());
-        assert!(Key::from_str(":9758").is_err());
-        assert!(Key::from_str("41958:key").is_err());
+    fn test_from_invalid_format() {
+        assert!(matches!(Key::from_str("156"),
+            Err(ParseKeyError::InvalidKeyFormat)));
+        assert!(matches!(Key::from_str("19704:"),
+            Err(ParseKeyError::InvalidKeyFormat)));
+        assert!(matches!(Key::from_str(":9758"),
+            Err(ParseKeyError::InvalidKeyFormat)));
     }
 
     #[test]
     fn test_from_str_not_a_number() {
-        assert!(Key::from_str("public:key").is_err());
+        assert!(matches!(Key::from_str("public:key"),
+            Err(ParseKeyError::ParseBigIntError(_))));
     }
 
     /// Computes number of bytes needful to represent `bits` number of bits
