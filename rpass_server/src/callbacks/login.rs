@@ -14,7 +14,8 @@ use rand::distributions::Alphanumeric;
 /// # Errors
 /// 
 /// * `EmptyUsername` - if no username was provided
-/// * `NoSuchUser` - if user with such username doesn't exist
+/// * `StorageError` - if can't create record cause of some error in
+/// `storage`
 pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
         -> Result<String, LoginError> {
     let username = arg_iter.next().ok_or(LoginError::EmptyUsername)?;

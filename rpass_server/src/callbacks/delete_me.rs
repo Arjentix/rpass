@@ -5,7 +5,8 @@ use super::{storage, AsyncStorage, Session};
 /// 
 /// # Errors
 /// 
-/// * `UnableToDelete` - if for some reason user's data can't be deleted
+/// * `StorageError` - if can't create record cause of some error in
+/// `storage`
 pub fn delete_me(storage: AsyncStorage, session: &mut Session)
         -> Result<String, DeleteMeError> {
     let mut storage_write = storage.write().unwrap();

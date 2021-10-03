@@ -14,7 +14,8 @@ use std::str::FromStr;
 /// * `InvalidUsername` - if username is invalid
 /// * `EmptyKey` - if no key was provided
 /// * `InvalidKey` - if key is invalid
-/// * `AlreadyExists` - if user with such username already exists
+/// * `StorageError` - if can't create record cause of some error in
+/// `storage`
 pub fn register(storage: AsyncStorage, arg_iter: ArgIter)
         -> Result<String, RegistrationError> {
     let username = arg_iter.next().ok_or(RegistrationError::EmptyUsername)?;
