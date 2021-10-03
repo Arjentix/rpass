@@ -1,4 +1,4 @@
-use super::{storage, AsyncStorage, Session, ArgIter};
+use super::{Result, Error, AsyncStorage, Session, ArgIter};
 
 /// Shows record for resource from `arg_iter` for user `session.username`
 /// 
@@ -9,32 +9,20 @@ use super::{storage, AsyncStorage, Session, ArgIter};
 /// * `StorageError` - if can't retrieve record cause of some error in
 /// `storage`
 pub fn show_record(storage: AsyncStorage, session: &Session, arg_iter: ArgIter)
-        -> Result<String, ShowRecordError> {
+        -> Result<String> {
     if !session.is_authorized {
-        return Err(ShowRecordError::UnacceptableRequestAtThisState);
+        return Err(Error::UnacceptableRequestAtThisState);
     }
 
-    let resource = arg_iter.next().ok_or(ShowRecordError::EmptyResourceName)?;
+    let resource = arg_iter.next().ok_or(Error::EmptyResourceName)?;
     let storage_read = storage.read().unwrap();
     let record = storage_read.get_record(&session.username, &resource)?;
     Ok(record.to_string())
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum ShowRecordError {
-    #[error("unacceptable request at this state")]
-    UnacceptableRequestAtThisState,
-
-    #[error("empty resource name")]
-    EmptyResourceName,
-
-    #[error("storage error: {0}")]
-    StorageError(#[from] storage::Error)
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{super::storage, *};
     use std::str::FromStr;
     use mockall::predicate;
 
@@ -69,7 +57,7 @@ mod tests {
         let mut arg_iter = args.iter().cloned();
 
         assert!(matches!(show_record(mock_storage, &session, &mut arg_iter),
-            Err(ShowRecordError::UnacceptableRequestAtThisState)));
+            Err(Error::UnacceptableRequestAtThisState)));
     }
 
     #[test]
@@ -84,7 +72,7 @@ mod tests {
         let mut arg_iter = args.iter().cloned();
 
         assert!(matches!(show_record(mock_storage, &session, &mut arg_iter),
-            Err(ShowRecordError::EmptyResourceName)));
+            Err(Error::EmptyResourceName)));
     }
 
     #[test]
@@ -108,6 +96,6 @@ mod tests {
                 )
             );
         assert!(matches!(show_record(mock_storage, &session, &mut arg_iter),
-            Err(ShowRecordError::StorageError(_))));
+            Err(Error::StorageError(_))));
     }
 }

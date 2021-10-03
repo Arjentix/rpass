@@ -1,4 +1,4 @@
-use super::Session;
+use super::{Result, Error, Session};
 
 /// Ends user's session.
 /// 
@@ -8,9 +8,9 @@ use super::Session;
 /// # Errors
 /// 
 /// * `UnacceptableRequestAtThisState` - if session is already ended
-pub fn quit(session: &mut Session) -> Result<String, QuitError> {
+pub fn quit(session: &mut Session) -> Result<String> {
     if session.is_ended {
-        return Err(QuitError::UnacceptableRequestAtThisState);
+        return Err(Error::UnacceptableRequestAtThisState);
     }
 
     session.is_authorized = false;
@@ -18,12 +18,6 @@ pub fn quit(session: &mut Session) -> Result<String, QuitError> {
     session.is_ended = true;
 
     Ok("Ok".to_owned())
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum QuitError {
-    #[error("unacceptable request at this state")]
-    UnacceptableRequestAtThisState
 }
 
 #[cfg(test)]
@@ -51,6 +45,6 @@ mod tests {
         };
 
         assert!(matches!(quit(&mut session),
-            Err(QuitError::UnacceptableRequestAtThisState)));
+            Err(Error::UnacceptableRequestAtThisState)));
     }
 }

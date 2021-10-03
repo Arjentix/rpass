@@ -1,4 +1,4 @@
-use super::{storage, AsyncStorage, Session};
+use super::{Result, AsyncStorage, Session};
 
 /// Deletes current user. Takes *username* from `session` and deletes it in
 /// `storage`
@@ -8,22 +8,16 @@ use super::{storage, AsyncStorage, Session};
 /// * `StorageError` - if can't create record cause of some error in
 /// `storage`
 pub fn delete_me(storage: AsyncStorage, session: &mut Session)
-        -> Result<String, DeleteMeError> {
+        -> Result<String> {
     let mut storage_write = storage.write().unwrap();
     storage_write.delete_user(&session.username)?;
     session.is_authorized = false;
     Ok("Ok".to_owned())
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum DeleteMeError {
-    #[error("storage error: {0}")]
-    StorageError(#[from] storage::Error)
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{super::storage, *};
     use std::io;
     use mockall::predicate;
 

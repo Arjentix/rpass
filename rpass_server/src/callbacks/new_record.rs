@@ -1,4 +1,4 @@
-use super::{storage, AsyncStorage, Session, ArgIter};
+use super::{storage, Result, Error, AsyncStorage, Session, ArgIter};
 use std::str::FromStr;
 
 /// Adds new record for user `session.username`.
@@ -13,40 +13,22 @@ use std::str::FromStr;
 /// * `StorageError` - if can't create record cause of some error in
 /// `storage`
 pub fn new_record(storage: AsyncStorage, session: &Session, arg_iter: ArgIter)
-        -> Result<String, NewRecordError> {
+        -> Result<String> {
     if !session.is_authorized {
-        return Err(NewRecordError::UnacceptableRequestAtThisState);
+        return Err(Error::UnacceptableRequestAtThisState);
     }
 
-    let resource = arg_iter.next().ok_or(NewRecordError::EmptyResourceName)?
+    let resource = arg_iter.next().ok_or(Error::EmptyResourceName)?
         .to_owned();
     let record = storage::Record {
         resource, ..
         storage::Record::from_str(
-            &arg_iter.next().ok_or(NewRecordError::EmptyRecordContent)?)?
+            &arg_iter.next().ok_or(Error::EmptyRecordContent)?)?
     };
 
     let mut storage_write = storage.write().unwrap();
     storage_write.write_record(&session.username, &record)?;
     Ok("Ok".to_owned())
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum NewRecordError {
-    #[error("unacceptable request at this state")]
-    UnacceptableRequestAtThisState,
-
-    #[error("empty resource name")]
-    EmptyResourceName,
-
-    #[error("empty record content")]
-    EmptyRecordContent,
-
-    #[error("invalid record format")]
-    InvalidRecordFormat(#[from] <storage::Record as FromStr>::Err),
-
-    #[error("storage error: {0}")]
-    StorageError(#[from] storage::Error)
 }
 
 #[cfg(test)]
@@ -98,7 +80,7 @@ mod tests {
         let mut arg_iter = args.iter().cloned();
 
         assert!(matches!(new_record(mock_storage, &session, &mut arg_iter),
-            Err(NewRecordError::UnacceptableRequestAtThisState)));
+            Err(Error::UnacceptableRequestAtThisState)));
     }
 
     #[test]
@@ -113,7 +95,7 @@ mod tests {
         let mut arg_iter = args.iter().cloned();
 
         assert!(matches!(new_record(mock_storage, &session, &mut arg_iter),
-            Err(NewRecordError::EmptyResourceName)));
+            Err(Error::EmptyResourceName)));
     }
 
     #[test]
@@ -128,7 +110,7 @@ mod tests {
         let mut arg_iter = args.iter().cloned();
 
         assert!(matches!(new_record(mock_storage, &session, &mut arg_iter),
-            Err(NewRecordError::EmptyRecordContent)));
+            Err(Error::EmptyRecordContent)));
     }
 
     #[test]
@@ -144,7 +126,7 @@ mod tests {
         let mut arg_iter = args.iter().cloned();
 
         assert!(matches!(new_record(mock_storage, &session, &mut arg_iter),
-            Err(NewRecordError::InvalidRecordFormat(_))));
+            Err(Error::InvalidRecordFormat(_))));
     }
 
     #[test]
@@ -173,6 +155,6 @@ mod tests {
                 )
             );
         assert!(matches!(new_record(mock_storage, &session, &mut arg_iter),
-            Err(NewRecordError::StorageError(_))));
+            Err(Error::StorageError(_))));
     }
 }

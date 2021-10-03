@@ -1,4 +1,4 @@
-use super::{storage, AsyncStorage, Session, ArgIter};
+use super::{Result, Error, AsyncStorage, Session, ArgIter};
 use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
 
@@ -17,8 +17,8 @@ use rand::distributions::Alphanumeric;
 /// * `StorageError` - if can't create record cause of some error in
 /// `storage`
 pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
-        -> Result<String, LoginError> {
-    let username = arg_iter.next().ok_or(LoginError::EmptyUsername)?;
+        -> Result<String> {
+    let username = arg_iter.next().ok_or(Error::EmptyUsername)?;
 
     let user_pub_key = {
         let storage_read = storage.read().unwrap();
@@ -38,18 +38,9 @@ pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
     Ok(session.login_confirmation.as_ref().unwrap().clone())
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum LoginError {
-    #[error("empty username")]
-    EmptyUsername,
-
-    #[error("storage error: {0}")]
-    StorageError(#[from] storage::Error)
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{super::storage, *};
     use crate::storage::Key;
     use std::str::FromStr;
     use mockall::predicate;
@@ -80,7 +71,7 @@ mod tests {
         let mut arg_iter = [].iter().map(|s: &&str| s.to_string());
 
         let res = login(mock_storage, &mut session, &mut arg_iter);
-        assert!(matches!(res, Err(LoginError::EmptyUsername)));
+        assert!(matches!(res, Err(Error::EmptyUsername)));
     }
 
     #[test]
@@ -95,6 +86,6 @@ mod tests {
                 storage::Error::UserDoesNotExist(TEST_USER.to_owned())
             ));
         let res = login(mock_storage, &mut session, &mut arg_iter);
-        assert!(matches!(res, Err(LoginError::StorageError(_))));
+        assert!(matches!(res, Err(Error::StorageError(_))));
     }
 }

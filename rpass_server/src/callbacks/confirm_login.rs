@@ -1,4 +1,4 @@
-use super::{AsyncStorage, Session, ArgIter};
+use super::{Result, Error, AsyncStorage, Session, ArgIter};
 
 /// Second and final part of user logging. Reads encrypted confirmation string
 /// from `arg_iter`, decrypts it with `storage.sec_key` and checks if it is
@@ -17,13 +17,13 @@ use super::{AsyncStorage, Session, ArgIter};
 /// * `InvalidConfirmationString` - if confirmation string isn't equal to the
 /// one stored in `session.login_confirmation`
 pub fn confirm_login(storage: AsyncStorage, session: &mut Session,
-        arg_iter: ArgIter) -> Result<String, ConfirmLoginError> {
+        arg_iter: ArgIter) -> Result<String> {
     if session.login_confirmation.is_none() || session.is_authorized {
-        return Err(ConfirmLoginError::UnacceptableRequestAtThisState);
+        return Err(Error::UnacceptableRequestAtThisState);
     }
 
     let encrypted_confirmation = arg_iter.next()
-        .ok_or(ConfirmLoginError::EmptyConfirmationString)?;
+        .ok_or(Error::EmptyConfirmationString)?;
 
     let sec_key;
     {
@@ -33,24 +33,12 @@ pub fn confirm_login(storage: AsyncStorage, session: &mut Session,
 
     let confirmation = sec_key.decrypt(&encrypted_confirmation);
     if &confirmation != session.login_confirmation.as_ref().unwrap() {
-        return Err(ConfirmLoginError::InvalidConfirmationString);
+        return Err(Error::InvalidConfirmationString);
     }
     
     session.login_confirmation = None;
     session.is_authorized = true;
     Ok("Ok".to_owned())
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum ConfirmLoginError {
-    #[error("unacceptable request at this state")]
-    UnacceptableRequestAtThisState,
-
-    #[error("empty confirmation string")]
-    EmptyConfirmationString,
-
-    #[error("invalid confirmation string")]
-    InvalidConfirmationString
 }
 
 #[cfg(test)]
@@ -87,13 +75,13 @@ mod tests {
 
         let res = confirm_login(mock_storage.clone(), &mut session, &mut arg_iter);
         assert!(matches!(res,
-            Err(ConfirmLoginError::UnacceptableRequestAtThisState)));
+            Err(Error::UnacceptableRequestAtThisState)));
 
         session.login_confirmation = Some(String::default());
         session.is_authorized = true;
         let res = confirm_login(mock_storage, &mut session, &mut arg_iter);
         assert!(matches!(res,
-            Err(ConfirmLoginError::UnacceptableRequestAtThisState)));
+            Err(Error::UnacceptableRequestAtThisState)));
     }
 
     #[test]
@@ -107,7 +95,7 @@ mod tests {
 
         let res = confirm_login(mock_storage, &mut session, &mut arg_iter);
         assert!(matches!(res,
-            Err(ConfirmLoginError::EmptyConfirmationString)));
+            Err(Error::EmptyConfirmationString)));
     }
 
     #[test]
@@ -125,6 +113,6 @@ mod tests {
             .return_const(sec_key);
         let res = confirm_login(mock_storage, &mut session, &mut arg_iter);
         assert!(matches!(res,
-            Err(ConfirmLoginError::InvalidConfirmationString)));
+            Err(Error::InvalidConfirmationString)));
     }
 }

@@ -1,4 +1,4 @@
-use super::{storage, AsyncStorage, ArgIter};
+use super::{Result, Error, AsyncStorage, ArgIter};
 use crate::storage::Key;
 use std::str::FromStr;
 
@@ -17,37 +17,19 @@ use std::str::FromStr;
 /// * `StorageError` - if can't create record cause of some error in
 /// `storage`
 pub fn register(storage: AsyncStorage, arg_iter: ArgIter)
-        -> Result<String, RegistrationError> {
-    let username = arg_iter.next().ok_or(RegistrationError::EmptyUsername)?;
+        -> Result<String> {
+    let username = arg_iter.next().ok_or(Error::EmptyUsername)?;
     if !is_valid_username(&username) {
-        return Err(RegistrationError::InvalidUsername(username));
+        return Err(Error::InvalidUsername(username));
     }
 
-    let key_string = arg_iter.next().ok_or(RegistrationError::EmptyKey)?;
+    let key_string = arg_iter.next().ok_or(Error::EmptyKey)?;
     let key = Key::from_str(&key_string)?;
 
     let mut storage_write = storage.write().unwrap();
     storage_write.add_new_user(&username, &key)?;
 
     Ok("Ok".to_owned())
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum RegistrationError {
-    #[error("empty username")]
-    EmptyUsername,
-
-    #[error("invalid username: {0}")]
-    InvalidUsername(String),
-
-    #[error("empty key")]
-    EmptyKey,
-
-    #[error("invalid key: `{0}`")]
-    InvalidKey(#[from] rpass::key::ParseBigIntError),
-
-    #[error("storage error: {0}")]
-    StorageError(#[from] storage::Error)
 }
 
 /// Checks if `username` is a valid string. 
@@ -84,7 +66,7 @@ fn is_contains_two_dots(s: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{super::storage, *};
     use mockall::predicate;
 
     #[test]
@@ -111,7 +93,7 @@ mod tests {
 
         let mut arg_iter = "".split_whitespace().map(str::to_owned);
         let res = register(mock_storage, &mut arg_iter);
-        assert!(matches!(res, Err(RegistrationError::EmptyUsername)));
+        assert!(matches!(res, Err(Error::EmptyUsername)));
     }
 
     #[test]
@@ -124,7 +106,7 @@ mod tests {
 
         let res = register(mock_storage, &mut arg_iter);
         assert!(matches!(res,
-            Err(RegistrationError::InvalidUsername(username))
+            Err(Error::InvalidUsername(username))
             if username == INVALID_USERNAME));
     }
 
@@ -134,7 +116,7 @@ mod tests {
 
         let mut arg_iter = "test_user".split_whitespace().map(str::to_owned);
         let res = register(mock_storage, &mut arg_iter);
-        assert!(matches!(res, Err(RegistrationError::EmptyKey)));
+        assert!(matches!(res, Err(Error::EmptyKey)));
     }
 
     #[test]
@@ -144,7 +126,7 @@ mod tests {
         let mut arg_iter = "test_user key".split_whitespace()
             .map(str::to_owned);
         let res = register(mock_storage, &mut arg_iter);
-        assert!(matches!(res, Err(RegistrationError::InvalidKey(_))));
+        assert!(matches!(res, Err(Error::InvalidKey(_))));
     }
 
     #[test]
@@ -157,7 +139,7 @@ mod tests {
         let mut arg_iter = "test_user 11:11".split_whitespace()
             .map(str::to_owned);
         let res = register(mock_storage, &mut arg_iter);
-        assert!(matches!(res, Err(RegistrationError::StorageError(_))));
+        assert!(matches!(res, Err(Error::StorageError(_))));
     }
 
     #[test]
