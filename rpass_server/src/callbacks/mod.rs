@@ -7,6 +7,8 @@ pub mod quit;
 pub mod new_record;
 pub mod show_record;
 
+mod utils;
+
 pub use crate::storage;
 pub use error::Error;
 pub use register::register;

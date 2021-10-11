@@ -1,4 +1,4 @@
-use super::{Result, Error, AsyncStorage, ArgIter};
+use super::{Result, Error, AsyncStorage, ArgIter, utils};
 use crate::storage::Key;
 use std::str::FromStr;
 
@@ -19,7 +19,7 @@ use std::str::FromStr;
 pub fn register(storage: AsyncStorage, arg_iter: ArgIter)
         -> Result<String> {
     let username = arg_iter.next().ok_or(Error::EmptyUsername)?;
-    if !is_valid_username(&username) {
+    if !utils::is_safe_for_filename(&username) {
         return Err(Error::InvalidUsername(username));
     }
 
@@ -30,38 +30,6 @@ pub fn register(storage: AsyncStorage, arg_iter: ArgIter)
     storage_write.add_new_user(&username, &key)?;
 
     Ok("Ok".to_owned())
-}
-
-/// Checks if `username` is a valid string. 
-/// Valid means:
-/// * Not empty
-/// * All characters are ascii alphanumeric or `.`, or `@`, or `_`
-/// * Contains at least one alphabetic character
-/// * Doesn't contains `..`
-/// * Doesn't start with `.`, `@` or `_`
-/// * Doesn't end with `.`, `@` or `_`
-/// * No more than 32 characters in length
-fn is_valid_username(username: &str) -> bool {
-    if username.is_empty() ||
-        !username.chars().all(
-            |c| char::is_ascii_alphanumeric(&c) || c == '.' || c == '@' ||
-            c == '_') ||
-        !username.chars().any(|c| char::is_ascii_alphabetic(&c)) ||
-        is_contains_two_dots(username) ||
-        username.starts_with('.') || username.starts_with('@') ||
-        username.starts_with('_') || username.ends_with('.') ||
-        username.ends_with('@') || username.ends_with('_') ||
-        username.len() > 32 {
-            return false;
-    }
-
-    true
-}
-
-fn is_contains_two_dots(s: &str) -> bool {
-    s.chars()
-        .zip(s.chars().skip(1))
-        .any(|(c1, c2)| c1 == '.' && c2 == '.')
 }
 
 #[cfg(test)]
@@ -140,24 +108,5 @@ mod tests {
             .map(str::to_owned);
         let res = register(mock_storage, &mut arg_iter);
         assert!(matches!(res, Err(Error::StorageError(_))));
-    }
-
-    #[test]
-    fn test_is_valid_username() {
-        assert!(!is_valid_username(""));
-        assert!(!is_valid_username("Борщ"));
-        assert!(!is_valid_username("786.@09"));
-        assert!(!is_valid_username("not/a/hacker/seriously"));
-        assert!(!is_valid_username("user..name"));
-        assert!(!is_valid_username(".user"));
-        assert!(!is_valid_username("user."));
-        assert!(!is_valid_username("@user"));
-        assert!(!is_valid_username("user@"));
-        assert!(!is_valid_username("_user"));
-        assert!(!is_valid_username("user_"));
-        assert!(!is_valid_username(
-            &String::from_utf8(vec![b'X'; 33]).unwrap()));
-
-        assert!(is_valid_username("user_404@example.com"));
     }
 }
