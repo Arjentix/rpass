@@ -137,6 +137,7 @@ impl Storage {
                 _ => ()
             }
         }
+        records_names.sort();
 
         Ok(records_names)
     }
