@@ -6,6 +6,7 @@ pub mod delete_me;
 pub mod quit;
 pub mod new_record;
 pub mod show_record;
+pub mod list_records;
 
 mod utils;
 
@@ -18,6 +19,7 @@ pub use delete_me::delete_me;
 pub use quit::quit;
 pub use new_record::new_record;
 pub use show_record::show_record;
+pub use list_records::list_records;
 pub type Result<T> = std::result::Result<T, Error>;
 
 use std::sync::{Arc, RwLock};
