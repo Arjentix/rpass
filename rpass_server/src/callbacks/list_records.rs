@@ -23,8 +23,9 @@ mod tests {
 
         mock_storage.write().unwrap().expect_list_records().times(1)
             .with(predicate::eq(TEST_USER))
-            .returning(|_, _| Ok(vec![]));
-        assert_eq!(list_records(mock_storage, &session).unwrap(), vec![]);
+            .returning(|_| Ok(vec!["first".to_owned(), "second".to_owned()]));
+        assert_eq!(list_records(mock_storage, &session).unwrap(),
+            "first\nsecond");
     }
 
     #[test]
