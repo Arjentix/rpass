@@ -26,6 +26,9 @@ pub enum Error {
     #[error("empty resource name")]
     EmptyResourceName,
 
+    #[error("invalid resource name")]
+    InvalidResourceName,
+
     #[error("empty record content")]
     EmptyRecordContent,
 

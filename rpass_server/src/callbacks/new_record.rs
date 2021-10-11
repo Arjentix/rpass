@@ -1,4 +1,4 @@
-use super::{storage, Result, Error, AsyncStorage, Session, ArgIter};
+use super::{storage, Result, Error, AsyncStorage, Session, ArgIter, utils};
 use std::str::FromStr;
 
 /// Adds new record for user `session.username`.
@@ -8,6 +8,7 @@ use std::str::FromStr;
 /// 
 /// * `UnacceptableRequestAtThisState` - if not `session.is_authorized`
 /// * `EmptyResourceName` - if resource name wasn't provided
+/// * `InvalidResourceName` - if resource name is invalid
 /// * `EmptyRecordContent` - if record wasn't provided
 /// * `InvalidRecordFormat` - if can't parse *Record*
 /// * `StorageError` - if can't create record cause of some error in
@@ -20,6 +21,10 @@ pub fn new_record(storage: AsyncStorage, session: &Session, arg_iter: ArgIter)
 
     let resource = arg_iter.next().ok_or(Error::EmptyResourceName)?
         .to_owned();
+    if !utils::is_safe_for_filename(&resource) {
+        return Err(Error::InvalidResourceName);
+    }
+
     let record = storage::Record {
         resource, ..
         storage::Record::from_str(
@@ -96,6 +101,21 @@ mod tests {
 
         assert!(matches!(new_record(mock_storage, &session, &mut arg_iter),
             Err(Error::EmptyResourceName)));
+    }
+
+    #[test]
+    fn test_invalid_resource() {
+        let mock_storage = AsyncStorage::default();
+        let session = Session {
+            is_authorized: true,
+            username : TEST_USER.to_owned(),
+            .. Session::default()
+        };
+        let args = ["../illegal/resource/name".to_owned()];
+        let mut arg_iter = args.iter().cloned();
+
+        assert!(matches!(new_record(mock_storage, &session, &mut arg_iter),
+            Err(Error::InvalidResourceName)));
     }
 
     #[test]
