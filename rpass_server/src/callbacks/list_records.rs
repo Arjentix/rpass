@@ -1,8 +1,39 @@
 use super::{Result, Error, AsyncStorage, Session};
 
-pub fn list_records(_storage: AsyncStorage, _session: &Session)
+/// Lists all records names for user `session.username`.
+/// Names will be delimited by a new line character
+/// 
+/// # Errors
+/// 
+/// * `UnacceptableRequestAtThisState` - if not `session.is_authorized`
+/// * `StorageError` - if can't create record cause of some error in
+/// `storage`
+pub fn list_records(storage: AsyncStorage, session: &Session)
         -> Result<String> {
-    Err(Error::UnacceptableRequestAtThisState)
+    if !session.is_authorized {
+        return Err(Error::UnacceptableRequestAtThisState);
+    }
+
+    let record_names = {
+        let storage_read = storage.read().unwrap();
+        storage_read.list_records(&session.username)?
+    };
+
+    Ok(to_string_with_delimiter(&record_names, '\n'))
+}
+
+/// Catenates strings from `values` delimiting them with `delimiter`
+fn to_string_with_delimiter(values: &Vec<String>, delimiter: char) -> String {
+    let mut s = String::default();
+    for value in values {
+        if !s.is_empty() {
+            s.push(delimiter);
+        }
+
+        s.push_str(&value);
+    }
+
+    s
 }
 
 #[cfg(test)]
