@@ -7,7 +7,7 @@ pub fn list_records(_storage: AsyncStorage, _session: &Session)
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{*, super::storage};
     use mockall::predicate;
 
     const TEST_USER: &'static str = "test_user";
@@ -35,5 +35,22 @@ mod tests {
 
         assert!(matches!(list_records(mock_storage, &session),
             Err(Error::UnacceptableRequestAtThisState)));
+    }
+
+    #[test]
+    fn test_storage_error() {
+        let mock_storage = AsyncStorage::default();
+        let session = Session {
+            is_authorized: true,
+            username : TEST_USER.to_owned(),
+            .. Session::default()
+        };
+
+        mock_storage.write().unwrap().expect_list_records().times(1)
+            .with(predicate::eq(TEST_USER))
+            .returning(|_|
+                Err(storage::Error::UserDoesNotExist(TEST_USER.to_owned())));
+        assert!(matches!(list_records(mock_storage, &session),
+            Err(Error::StorageError(_))));
     }
 }
