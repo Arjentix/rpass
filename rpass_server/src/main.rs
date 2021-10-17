@@ -43,7 +43,8 @@ fn main() -> Result<(), anyhow::Error> {
 
 fn build_request_dispatcher(storage : Arc<RwLock<Storage>>)
         -> Arc<RwLock<RequestDispatcher>> {
-    let request_dispatcher = Arc::new(RwLock::new(RequestDispatcher::default()));
+    let request_dispatcher = Arc::new(RwLock::new(
+        RequestDispatcher::default()));
 
     {
         let register_storage = storage.clone();
@@ -131,7 +132,8 @@ fn handle_client(mut stream: TcpStream,
         println!("request = \"{}\"", request);
 
         let dispatcher_read = request_dispatcher.read().unwrap();
-        let mut response = match dispatcher_read.dispatch(&mut session, &request) {
+        let mut response = match dispatcher_read
+                .dispatch(&mut session, &request) {
             Ok(response) => response,
             Err(err) => format!("Error: {}\r\n", err.to_string())
         };
@@ -159,7 +161,8 @@ fn send_storage_key(stream: &mut TcpStream, storage: Arc<RwLock<Storage>>)
 
 /// Reads bytes from `reader` until EOT byte is captured.
 /// Returns bytes without EOT byte
-fn read_request_bytes(reader: &mut BufReader<TcpStream>) -> io::Result<Vec<u8>> {
+fn read_request_bytes(reader: &mut BufReader<TcpStream>)
+        -> io::Result<Vec<u8>> {
     const EOT: u8 = 0x04;
     let mut buf = vec![];
     reader.read_until(EOT, &mut buf)?;

@@ -4,7 +4,8 @@ use rand::distributions::Alphanumeric;
 
 /// First part of user logging. Reads username from `arg_iter`, gets his key
 /// from `storage` and writes random encrypted string into
-/// `session.login_confirmation`. Returns *Ok() with login confirmation* in success
+/// `session.login_confirmation`.
+/// Returns *Ok() with login confirmation* in success
 /// 
 /// The next step user should decrypt that random confirmation string,
 /// encrypt if with storage public key and send it back.

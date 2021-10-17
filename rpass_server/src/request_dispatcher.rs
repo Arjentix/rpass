@@ -37,13 +37,16 @@ pub struct RequestDispatcher {
 }
 
 impl RequestDispatcher {
-    pub fn add_callback<C>(&mut self, command: Cow<'static, str>, callback: C) -> &mut Self
-        where C: Fn(&mut Session, ArgIter) -> Result<String> + Send + Sync + 'static {
+    pub fn add_callback<C>(&mut self, command: Cow<'static, str>, callback: C)
+            -> &mut Self
+            where C: Fn(&mut Session, ArgIter) -> Result<String> +
+            Send + Sync + 'static {
         self.command_to_callback.insert(command, Box::new(callback));
         self
     }
 
-    pub fn dispatch(&self, session: &mut Session, request: &str) -> Result<String> {
+    pub fn dispatch(&self, session: &mut Session, request: &str)
+            -> Result<String> {
         let mut iter = ARGUMENTS_REGEX.captures_iter(request)
             .map(|x| strip_quotes(&x[1]).to_owned());
         let command = match iter.next() {
