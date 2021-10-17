@@ -18,8 +18,8 @@ pub enum DispatchingError {
     #[error("command wasn't provided")]
     NoCommandProvided,
 
-    #[error("there is no callback for command `{0}`")]
-    NoCallback(Cow<'static, str>)
+    #[error("undefined command `{0}`")]
+    UndefinedCommand(Cow<'static, str>)
 }
 
 }
@@ -57,7 +57,7 @@ impl RequestDispatcher {
         match self.command_to_callback.get(&command) {
             Some(callback) => callback(session, &mut iter),
             None => Err(Error::from(
-                DispatchingError::NoCallback(command)))
+                DispatchingError::UndefinedCommand(command)))
         }
     }
 }
