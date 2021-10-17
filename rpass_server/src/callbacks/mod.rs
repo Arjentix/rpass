@@ -27,4 +27,7 @@ use std::sync::{Arc, RwLock};
 use crate::request_dispatcher::{ArgIter};
 use crate::session::Session;
 
-type AsyncStorage = Arc<RwLock<storage::Storage>>;
+#[mockall_double::double]
+use storage::Storage;
+
+type AsyncStorage = Arc<RwLock<Storage>>;

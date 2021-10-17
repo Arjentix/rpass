@@ -7,6 +7,7 @@ use std::net::{TcpListener, TcpStream};
 use std::io::{self, BufRead, BufReader, Write, Error, ErrorKind};
 use std::borrow::Cow;
 use std::sync::{Arc, RwLock};
+#[mockall_double::double]
 use storage::Storage;
 use request_dispatcher::{RequestDispatcher};
 use session::Session;
