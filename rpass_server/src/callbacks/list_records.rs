@@ -23,14 +23,14 @@ pub fn list_records(storage: AsyncStorage, session: &Session)
 }
 
 /// Catenates strings from `values` delimiting them with `delimiter`
-fn to_string_with_delimiter(values: &Vec<String>, delimiter: char) -> String {
+fn to_string_with_delimiter(values: &[String], delimiter: char) -> String {
     let mut s = String::default();
     for value in values {
         if !s.is_empty() {
             s.push(delimiter);
         }
 
-        s.push_str(&value);
+        s.push_str(value);
     }
 
     s
@@ -41,7 +41,7 @@ mod tests {
     use super::{*, super::storage};
     use mockall::predicate;
 
-    const TEST_USER: &'static str = "test_user";
+    const TEST_USER: &str = "test_user";
 
     #[test]
     fn test_ok() {
@@ -82,6 +82,6 @@ mod tests {
             .returning(|_|
                 Err(storage::Error::UserDoesNotExist(TEST_USER.to_owned())));
         assert!(matches!(list_records(mock_storage, &session),
-            Err(Error::StorageError(_))));
+            Err(Error::Storage(_))));
     }
 }

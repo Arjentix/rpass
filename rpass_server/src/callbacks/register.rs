@@ -41,8 +41,8 @@ mod tests {
     fn test_ok() {
         let mock_storage = AsyncStorage::default();
 
-        const TEST_USER: &'static str = "test_user";
-        const KEY_STR: &'static str = "11:11";
+        const TEST_USER: &str = "test_user";
+        const KEY_STR: &str = "11:11";
 
         mock_storage.write().unwrap().expect_add_new_user().times(1)
         .with(predicate::eq(TEST_USER),
@@ -68,7 +68,7 @@ mod tests {
     fn test_invalid_username() {
         let mock_storage = AsyncStorage::default();
 
-        const INVALID_USERNAME: &'static str = "_invalid_username_";
+        const INVALID_USERNAME: &str = "_invalid_username_";
         let mut arg_iter = INVALID_USERNAME.split_whitespace()
             .map(str::to_owned);
 
@@ -107,6 +107,6 @@ mod tests {
         let mut arg_iter = "test_user 11:11".split_whitespace()
             .map(str::to_owned);
         let res = register(mock_storage, &mut arg_iter);
-        assert!(matches!(res, Err(Error::StorageError(_))));
+        assert!(matches!(res, Err(Error::Storage(_))));
     }
 }

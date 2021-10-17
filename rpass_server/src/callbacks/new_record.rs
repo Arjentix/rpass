@@ -19,8 +19,7 @@ pub fn new_record(storage: AsyncStorage, session: &Session, arg_iter: ArgIter)
         return Err(Error::UnacceptableRequestAtThisState);
     }
 
-    let resource = arg_iter.next().ok_or(Error::EmptyResourceName)?
-        .to_owned();
+    let resource = arg_iter.next().ok_or(Error::EmptyResourceName)?;
     if !utils::is_safe_for_filename(&resource) {
         return Err(Error::InvalidResourceName);
     }
@@ -42,10 +41,10 @@ mod tests {
     use std::io;
     use mockall::predicate;
 
-    const TEST_USER: &'static str = "test_user";
-    const RESOURCE: &'static str = "example.com";
-    const PASSWORD: &'static str = "secret";
-    const NOTES: &'static str = "first notes\n\"second notes\"\n\"";
+    const TEST_USER: &str = "test_user";
+    const RESOURCE: &str = "example.com";
+    const PASSWORD: &str = "secret";
+    const NOTES: &str = "first notes\n\"second notes\"\n\"";
 
     #[test]
     fn test_ok() {
@@ -175,6 +174,6 @@ mod tests {
                 )
             );
         assert!(matches!(new_record(mock_storage, &session, &mut arg_iter),
-            Err(Error::StorageError(_))));
+            Err(Error::Storage(_))));
     }
 }

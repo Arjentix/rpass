@@ -31,8 +31,8 @@ mod tests {
     use std::str::FromStr;
     use mockall::predicate;
 
-    const TEST_USER: &'static str = "test_user";
-    const TEST_RESOURCE: &'static str = "example.com";
+    const TEST_USER: &str = "test_user";
+    const TEST_RESOURCE: &str = "example.com";
 
     #[test]
     fn test_ok() {
@@ -116,6 +116,6 @@ mod tests {
                 )
             );
         assert!(matches!(show_record(mock_storage, &session, &mut arg_iter),
-            Err(Error::StorageError(_))));
+            Err(Error::Storage(_))));
     }
 }

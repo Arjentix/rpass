@@ -26,7 +26,7 @@ mod tests {
     use std::io;
     use mockall::predicate;
 
-    const TEST_USER: &'static str = "test_user";
+    const TEST_USER: &str = "test_user";
 
     #[test]
     fn test_ok() {
@@ -56,8 +56,10 @@ mod tests {
     #[test]
     fn test_storage_error() {
         let mock_storage = AsyncStorage::default();
-        let mut session = Session::default();
-        session.username = TEST_USER.to_owned();
+        let mut session = Session {
+            username : TEST_USER.to_owned(),
+            .. Session::default()
+        };
 
         mock_storage.write().unwrap().expect_delete_user()
             .with(predicate::eq(TEST_USER))

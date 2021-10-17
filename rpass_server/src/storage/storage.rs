@@ -9,7 +9,7 @@ use std::str::FromStr;
 #[cfg(test)]
 use mockall::automock;
 
-const PUB_KEY_FILENAME: &'static str = "key.pub";
+const PUB_KEY_FILENAME: &str = "key.pub";
 
 /// Password storage
 pub struct Storage {
@@ -167,8 +167,7 @@ impl Storage {
     /// 
     /// Any possible error during file/directory opening/writing
     fn open_storage(path: &Path) -> Result<()> {
-        const DIRECTORY_MESSAGE_PREFIX: &'static str =
-            "Rpass storage directory";
+        const DIRECTORY_MESSAGE_PREFIX: &str = "Rpass storage directory";
 
         if !path.exists() {
             println!("{} {:?} does not exist. Creating...",

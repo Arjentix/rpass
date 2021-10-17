@@ -46,7 +46,7 @@ mod tests {
     use std::str::FromStr;
     use mockall::predicate;
 
-    const TEST_USER: &'static str = "test_user";
+    const TEST_USER: &str = "test_user";
 
     #[test]
     fn test_ok() {
@@ -87,6 +87,6 @@ mod tests {
                 storage::Error::UserDoesNotExist(TEST_USER.to_owned())
             ));
         let res = login(mock_storage, &mut session, &mut arg_iter);
-        assert!(matches!(res, Err(Error::StorageError(_))));
+        assert!(matches!(res, Err(Error::Storage(_))));
     }
 }

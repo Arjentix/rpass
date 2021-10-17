@@ -14,8 +14,8 @@ use session::Session;
 extern crate lazy_static;
 
 fn main() -> Result<(), anyhow::Error> {
-    let home_dir = dirs::home_dir().ok_or(
-        Error::new(ErrorKind::NotFound, "Can't open home directory"))?;
+    let home_dir = dirs::home_dir().ok_or_else(
+        || Error::new(ErrorKind::NotFound, "Can't open home directory"))?;
     let path = home_dir.join(".rpass_storage");
 
     let storage = Arc::new(RwLock::new(Storage::from_path(path)?));
@@ -53,7 +53,7 @@ fn build_request_dispatcher(storage : Arc<RwLock<Storage>>)
         let delete_me_storage = storage.clone();
         let new_record_storage = storage.clone();
         let show_record_storage = storage.clone();
-        let list_records_storage = storage.clone();
+        let list_records_storage = storage;
 
         let mut dispatcher_write = request_dispatcher.write().unwrap();
         dispatcher_write
