@@ -15,7 +15,7 @@ use rand::distributions::Alphanumeric;
 /// # Errors
 /// 
 /// * `EmptyUsername` - if no username was provided
-/// * `StorageError` - if can't create record cause of some error in
+/// * `Storage` - if can't create record cause of some error in
 /// `storage`
 pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
         -> Result<String> {

@@ -7,7 +7,7 @@ use super::{Result, Error, AsyncStorage, Session, ArgIter, utils};
 /// * `UnacceptableRequestAtThisState` - if not `session.is_authorized`
 /// * `EmptyResourceName` - if resource name wasn't provided
 /// * `InvalidResourceName` - if resource name is invalid
-/// * `StorageError` - if can't retrieve record cause of some error in
+/// * `Storage` - if can't retrieve record cause of some error in
 /// `storage`
 pub fn show_record(storage: AsyncStorage, session: &Session, arg_iter: ArgIter)
         -> Result<String> {

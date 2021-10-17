@@ -11,7 +11,7 @@ use std::str::FromStr;
 /// * `InvalidResourceName` - if resource name is invalid
 /// * `EmptyRecordContent` - if record wasn't provided
 /// * `InvalidRecordFormat` - if can't parse *Record*
-/// * `StorageError` - if can't create record cause of some error in
+/// * `Storage` - if can't create record cause of some error in
 /// `storage`
 pub fn new_record(storage: AsyncStorage, session: &Session, arg_iter: ArgIter)
         -> Result<String> {

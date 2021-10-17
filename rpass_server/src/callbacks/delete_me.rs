@@ -6,7 +6,7 @@ use super::{Result, Error, AsyncStorage, Session};
 /// # Errors
 /// 
 /// * `UnacceptableRequestAtThisState` - if not `session.is_authorized`
-/// * `StorageError` - if can't create record cause of some error in
+/// * `Storage` - if can't create record cause of some error in
 /// `storage`
 pub fn delete_me(storage: AsyncStorage, session: &mut Session)
         -> Result<String> {
