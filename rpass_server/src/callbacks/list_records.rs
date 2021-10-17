@@ -19,21 +19,16 @@ pub fn list_records(storage: AsyncStorage, session: &Session)
         storage_read.list_records(&session.username)?
     };
 
-    Ok(to_string_with_delimiter(&record_names, '\n'))
+    Ok(to_string_with_delimiter(&record_names, "\n"))
 }
 
 /// Catenates strings from `values` delimiting them with `delimiter`
-fn to_string_with_delimiter(values: &[String], delimiter: char) -> String {
-    let mut s = String::default();
-    for value in values {
-        if !s.is_empty() {
-            s.push(delimiter);
-        }
-
-        s.push_str(value);
+fn to_string_with_delimiter(values: &[String], delimiter: &str) -> String {
+    match !values.is_empty() {
+        true => values.iter().skip(1)
+            .fold(values[0].clone(), |acc, s| acc + delimiter + s),
+        false => String::default()
     }
-
-    s
 }
 
 #[cfg(test)]
@@ -57,6 +52,21 @@ mod tests {
             .returning(|_| Ok(vec!["first".to_owned(), "second".to_owned()]));
         assert_eq!(list_records(mock_storage, &session).unwrap(),
             "first\nsecond");
+    }
+
+    #[test]
+    fn test_empty_list() {
+        let mock_storage = AsyncStorage::default();
+        let session = Session {
+            is_authorized: true,
+            username : TEST_USER.to_owned(),
+            .. Session::default()
+        };
+
+        mock_storage.write().unwrap().expect_list_records().times(1)
+            .with(predicate::eq(TEST_USER))
+            .returning(|_| Ok(vec![]));
+        assert_eq!(list_records(mock_storage, &session).unwrap(), "");
     }
 
     #[test]
