@@ -1,8 +1,8 @@
 mod record;
-mod user_dir;
+mod user_storage;
 
 pub use record::*;
-pub use user_dir::*;
+pub use user_storage::*;
 pub use rpass::key::*;
 
 use std::path::{Path, PathBuf};
@@ -16,7 +16,7 @@ use mockall::automock;
 
 const PUB_KEY_FILENAME: &str = "key.pub";
 
-/// Password storage
+/// Record storage of all users
 pub struct Storage {
     path: PathBuf,
     pub_key: Key,
@@ -86,9 +86,9 @@ impl Storage {
     }
     
     /// Gs UserDir struct for user with name `username`
-    pub fn get_user_dir(&self, username: &str) -> Result<UserDir> {
+    pub fn get_user_storage(&self, username: &str) -> Result<UserStorage> {
         let user_dir_path = self.path.join(username);
-        UserDir::new(user_dir_path)
+        UserStorage::new(user_dir_path)
     }
 
     /// Reads and returns user public key

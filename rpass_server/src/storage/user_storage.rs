@@ -4,12 +4,13 @@ use std::str::FromStr;
 use std::string::ToString;
 use std::fs;
 
-pub struct UserDir {
+/// Password storage of concrete user
+pub struct UserStorage {
     path: PathBuf,
     pub_key: Key
 }
 
-impl UserDir {
+impl UserStorage {
     /// Initializes UserDir from given `path`
     /// 
     /// # Errors
@@ -24,7 +25,7 @@ impl UserDir {
         }
 
         let pub_key = Key::from_bytes(&fs::read(real_path.join("key.pub"))?)?;
-        Ok(UserDir{path: real_path.to_path_buf(), pub_key})
+        Ok(UserStorage{path: real_path.to_path_buf(), pub_key})
     }
 
     /// Gets user pub key
