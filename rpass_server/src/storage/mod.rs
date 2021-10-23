@@ -13,7 +13,6 @@ pub use rpass::key::*;
 use std::path::{Path, PathBuf};
 use std::fs;
 use std::string::ToString;
-use std::str::FromStr;
 use std::sync::{Weak, Arc, RwLock};
 use std::collections::HashMap;
 
@@ -129,18 +128,6 @@ impl Storage {
 
         let record_file = user_dir.join(&record.resource);
         fs::write(record_file, record.to_string()).map_err(|err| err.into())
-    }
-
-    /// Gets record about `resource` from `username` directory
-    pub fn get_record(&self, username: &str, resource: &str) -> Result<Record> {
-        let user_dir = self.get_old_user_dir(username)?;
-
-        let record_file = user_dir.join(resource);
-        let record_str = fs::read_to_string(record_file)?;
-        Ok(Record {
-            resource: resource.to_owned(),
-            .. Record::from_str(&record_str)?
-        })
     }
 
     /// Gets list of names of all records for user `username`
