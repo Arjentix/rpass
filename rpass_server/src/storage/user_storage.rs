@@ -4,12 +4,16 @@ use std::str::FromStr;
 use std::string::ToString;
 use std::fs;
 
+#[cfg(test)]
+use mockall::automock;
+
 /// Password storage of concrete user
 pub struct UserStorage {
     path: PathBuf,
     pub_key: Key
 }
 
+#[cfg_attr(test, automock, allow(dead_code))]
 impl UserStorage {
     /// Initializes UserDir from given `path`
     /// 

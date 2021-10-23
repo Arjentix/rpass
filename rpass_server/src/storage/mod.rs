@@ -4,7 +4,10 @@ mod user_storage;
 
 pub use error::Error;
 pub use record::*;
-pub use user_storage::*;
+
+#[mockall_double::double]
+pub use user_storage::UserStorage;
+
 pub use rpass::key::*;
 
 use std::path::{Path, PathBuf};

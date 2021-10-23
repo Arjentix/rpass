@@ -4,8 +4,10 @@ use super::{Result, Error, AsyncStorage, Session, ArgIter};
 /// from `arg_iter`, decrypts it with `storage.sec_key` and checks if it is
 /// equal to the `session.login_confirmation`.
 /// 
-/// Sets `session.is_authorized` to *true* and returns *Ok("Ok")* if everything
-/// is good
+/// If everything is good then:
+/// 1. Sets `session.is_authorized` to *true*
+/// 2. Sets `session.user_storage` to *Some(_)*
+/// 3. Return *Ok("Ok")*
 /// 
 /// See [`super::login()`] function for first part
 /// 
@@ -36,6 +38,9 @@ pub fn confirm_login(storage: AsyncStorage, session: &mut Session,
         return Err(Error::InvalidConfirmationString);
     }
     
+    let mut storage_write = storage.write().unwrap();
+    session.user_storage = Some(storage_write
+        .get_user_storage(&session.username)?);
     session.login_confirmation = None;
     session.is_authorized = true;
     Ok("Ok".to_owned())
@@ -44,13 +49,19 @@ pub fn confirm_login(storage: AsyncStorage, session: &mut Session,
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::super::storage;
+    use std::sync::Arc;
     use crate::storage::Key;
+    use mockall::predicate;
+
+    const TEST_USER: &str = "test_user";
 
     #[test]
     fn test_ok() {
         let mock_storage = AsyncStorage::default();
         let mut session = Session {
             login_confirmation: Some(String::from("confirmation")),
+            username: TEST_USER.to_owned(),
             .. Session::default()
         };
         let (pub_key, sec_key) = Key::generate_pair();
@@ -58,12 +69,19 @@ mod tests {
             session.login_confirmation.as_ref().unwrap());
         let mut arg_iter = encrypted_confirmation.split_whitespace().map(str::to_owned);
 
-        mock_storage.write().unwrap().expect_get_sec_key().times(1)
-            .return_const(sec_key);
+        {
+            let mut mock_storage_write = mock_storage.write().unwrap();
+            mock_storage_write.expect_get_sec_key().times(1)
+                .return_const(sec_key);
+            mock_storage_write.expect_get_user_storage()
+                .with(predicate::eq(TEST_USER)).times(1)
+                .returning(|_|Ok(Arc::default()));
+        }
         let res = confirm_login(mock_storage, &mut session, &mut arg_iter);
         assert_eq!(res.unwrap(), "Ok");
         assert!(session.login_confirmation.is_none());
         assert!(session.is_authorized);
+        assert!(session.user_storage.is_some());
     }
 
     #[test]
@@ -115,4 +133,34 @@ mod tests {
         assert!(matches!(res,
             Err(Error::InvalidConfirmationString)));
     }
+
+    #[test]
+    fn test_storage_error() {
+        let mock_storage = AsyncStorage::default();
+        let mut session = Session {
+            login_confirmation: Some(String::from("confirmation")),
+            username: TEST_USER.to_owned(),
+            .. Session::default()
+        };
+        let (pub_key, sec_key) = Key::generate_pair();
+        let encrypted_confirmation = pub_key.encrypt(
+            session.login_confirmation.as_ref().unwrap());
+        let mut arg_iter = encrypted_confirmation.split_whitespace().map(str::to_owned);
+
+        {
+            let mut mock_storage_write = mock_storage.write().unwrap();
+            mock_storage_write.expect_get_sec_key().times(1)
+                .return_const(sec_key);
+            mock_storage_write.expect_get_user_storage()
+                .with(predicate::eq(TEST_USER)).times(1)
+                .returning(|_|Err(
+                    storage::Error::UserAlreadyExists(TEST_USER.to_owned())));
+        }
+        let res = confirm_login(mock_storage, &mut session, &mut arg_iter);
+        assert!(matches!(res, Err(Error::Storage(_))));
+        assert!(session.login_confirmation.is_some());
+        assert!(!session.is_authorized);
+        assert!(session.user_storage.is_none());
+    }
+
 }
