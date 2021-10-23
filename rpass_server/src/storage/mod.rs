@@ -11,6 +11,8 @@ use std::path::{Path, PathBuf};
 use std::fs;
 use std::string::ToString;
 use std::str::FromStr;
+use std::sync::{Weak, Arc, RwLock};
+use std::collections::HashMap;
 
 #[cfg(test)]
 use mockall::automock;
@@ -19,11 +21,14 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 const PUB_KEY_FILENAME: &str = "key.pub";
 
+type WeakUserStorage = Weak<RwLock<UserStorage>>;
+
 /// Record storage of all users
 pub struct Storage {
     path: PathBuf,
     pub_key: Key,
-    sec_key: Key
+    sec_key: Key,
+    username_to_user_storage: HashMap<String, WeakUserStorage>
 }
 
 #[cfg_attr(test, automock, allow(dead_code))]
@@ -39,7 +44,12 @@ impl Storage {
 
         let (pub_key, sec_key) = Self::read_keys(real_path)?;
 
-        Ok(Storage{path: real_path.to_path_buf(), pub_key, sec_key})
+        Ok(Storage {
+            path: real_path.to_path_buf(),
+            pub_key,
+            sec_key,
+            username_to_user_storage: HashMap::new()
+        })
     }
 
     /// Adds new user to the storage
@@ -65,13 +75,30 @@ impl Storage {
     /// 
     /// See [`std::fs::remove_dir_all()`]
     pub fn delete_user(&mut self, username: &str) -> Result<()> {
+        self.username_to_user_storage.remove(username);
         fs::remove_dir_all(self.path.join(username)).map_err(|err| err.into())
     }
     
-    /// Gs UserDir struct for user with name `username`
-    pub fn get_user_storage(&self, username: &str) -> Result<UserStorage> {
+    /// Gets UserStorage struct for user with name `username`
+    /// 
+    /// # Errors
+    /// 
+    /// See [`UserStorage::new()`]
+    pub fn get_user_storage(&mut self, username: &str)
+            -> Result<Arc<RwLock<UserStorage>>> {
+        if let Some(weak) = self.username_to_user_storage.get(username) {
+            if weak.strong_count() > 0 {
+                return Ok(weak.upgrade().unwrap());
+            }
+        };
+
         let user_dir_path = self.path.join(username);
-        UserStorage::new(user_dir_path)
+        let user_storage = Arc::new(RwLock::new(
+            UserStorage::new(user_dir_path)?));
+        self.username_to_user_storage.insert(username.to_owned(),
+            Arc::downgrade(&user_storage));
+
+        Ok(user_storage)
     }
 
     /// Reads and returns user public key
