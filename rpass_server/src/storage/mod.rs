@@ -1,18 +1,21 @@
+mod error;
 mod record;
 mod user_storage;
 
+pub use error::Error;
 pub use record::*;
 pub use user_storage::*;
 pub use rpass::key::*;
 
 use std::path::{Path, PathBuf};
 use std::fs;
-use std::io;
 use std::string::ToString;
 use std::str::FromStr;
 
 #[cfg(test)]
 use mockall::automock;
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 const PUB_KEY_FILENAME: &str = "key.pub";
 
@@ -22,26 +25,6 @@ pub struct Storage {
     pub_key: Key,
     sec_key: Key
 }
-
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-    #[error("io error: {0}")]
-    Io(#[from] io::Error),
-
-    #[error("Storage path {0} is not a directory")]
-    StoragePathIsNotADirectory(PathBuf),
-
-    #[error("user {0} already exists")]
-    UserAlreadyExists(String),
-
-    #[error("user {0} doesn't exist")]
-    UserDoesNotExist(String),
-
-    #[error("record parsing error: {0}")]
-    CantParseRecord(#[from] <Record as FromStr>::Err)
-}
-
-pub type Result<T> = std::result::Result<T, Error>;
 
 #[cfg_attr(test, automock, allow(dead_code))]
 impl Storage {
