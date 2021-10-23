@@ -1,6 +1,8 @@
 mod record;
+mod user_dir;
 
 pub use record::*;
+pub use user_dir::*;
 pub use rpass::key::*;
 
 use std::path::{Path, PathBuf};
@@ -54,7 +56,7 @@ impl Storage {
 
         let (pub_key, sec_key) = Self::read_keys(real_path)?;
 
-        Ok(Storage {path: real_path.to_path_buf(), pub_key, sec_key})
+        Ok(Storage{path: real_path.to_path_buf(), pub_key, sec_key})
     }
 
     /// Adds new user to the storage
@@ -82,6 +84,12 @@ impl Storage {
     pub fn delete_user(&mut self, username: &str) -> Result<()> {
         fs::remove_dir_all(self.path.join(username)).map_err(|err| err.into())
     }
+    
+    /// Gs UserDir struct for user with name `username`
+    pub fn get_user_dir(&self, username: &str) -> Result<UserDir> {
+        let user_dir_path = self.path.join(username);
+        UserDir::new(user_dir_path)
+    }
 
     /// Reads and returns user public key
     /// 
@@ -104,7 +112,7 @@ impl Storage {
     /// Any error during file writing
     pub fn write_record(&mut self, username: &str, record: &Record)
             -> Result<()> {
-        let user_dir = self.get_user_dir(username)?;
+        let user_dir = self.get_old_user_dir(username)?;
 
         let record_file = user_dir.join(&record.resource);
         fs::write(record_file, record.to_string()).map_err(|err| err.into())
@@ -112,7 +120,7 @@ impl Storage {
 
     /// Gets record about `resource` from `username` directory
     pub fn get_record(&self, username: &str, resource: &str) -> Result<Record> {
-        let user_dir = self.get_user_dir(username)?;
+        let user_dir = self.get_old_user_dir(username)?;
 
         let record_file = user_dir.join(resource);
         let record_str = fs::read_to_string(record_file)?;
@@ -124,7 +132,7 @@ impl Storage {
 
     /// Gets list of names of all records for user `username`
     pub fn list_records(&self, username: &str) -> Result<Vec<String>> {
-        let user_dir = self.get_user_dir(username)?;
+        let user_dir = self.get_old_user_dir(username)?;
 
         let mut records_names = vec![];
         for entry_res in fs::read_dir(user_dir)? {
@@ -156,7 +164,7 @@ impl Storage {
     }
 
     /// Gets user directory, performing checking
-    fn get_user_dir(&self, username: &str) -> Result<PathBuf> {
+    fn get_old_user_dir(&self, username: &str) -> Result<PathBuf> {
         let user_dir = self.path.join(username);
         if !user_dir.is_dir() {
             return Err(Error::UserDoesNotExist(username.to_owned()));
