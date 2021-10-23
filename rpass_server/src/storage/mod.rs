@@ -24,7 +24,7 @@ pub struct Storage {
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("io error: {0}")]
-    IoError(#[from] io::Error),
+    Io(#[from] io::Error),
 
     #[error("Storage path {0} is not a directory")]
     StoragePathIsNotADirectory(PathBuf),
@@ -36,7 +36,7 @@ pub enum Error {
     UserDoesNotExist(String),
 
     #[error("record parsing error: {0}")]
-    RecordParsingError(#[from] <Record as FromStr>::Err)
+    CantParseRecord(#[from] <Record as FromStr>::Err)
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

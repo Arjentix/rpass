@@ -110,7 +110,7 @@ mod tests {
             .with(predicate::eq(TEST_USER), predicate::eq(TEST_RESOURCE))
             .returning(|_, _| 
                 Err(
-                    storage::Error::RecordParsingError(
+                    storage::Error::CantParseRecord(
                         <storage::Record as FromStr>::Err::EmptyString
                     )
                 )

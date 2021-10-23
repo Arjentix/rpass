@@ -169,7 +169,7 @@ mod tests {
         mock_storage.write().unwrap().expect_write_record().times(1)
             .with(predicate::eq(TEST_USER), predicate::eq(expected_record))
             .returning(|_, _|
-                Err(storage::Error::IoError(
+                Err(storage::Error::Io(
                     io::Error::new(io::ErrorKind::Other, ""))
                 )
             );

@@ -65,7 +65,7 @@ mod tests {
             .with(predicate::eq(TEST_USER))
             .returning(|_|
                 Err(
-                    storage::Error::IoError(
+                    storage::Error::Io(
                         io::Error::new(io::ErrorKind::Other, "")
                     )
                 )
