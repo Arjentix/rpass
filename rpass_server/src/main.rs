@@ -19,7 +19,7 @@ fn main() -> Result<(), anyhow::Error> {
         || Error::new(ErrorKind::NotFound, "Can't open home directory"))?;
     let path = home_dir.join(".rpass_storage");
 
-    let storage = Arc::new(RwLock::new(Storage::from_path(path)?));
+    let storage = Arc::new(RwLock::new(Storage::new(path)?));
     let request_dispatcher = build_request_dispatcher(storage.clone());
 
     let listener = TcpListener::bind("127.0.0.1:3747")?;

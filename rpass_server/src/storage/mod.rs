@@ -48,7 +48,7 @@ impl Storage {
     /// # Errors
     /// 
     /// Any possible error during file/directory opening/writing
-    pub fn from_path<P: 'static + AsRef<Path>>(path: P) -> Result<Self> {
+    pub fn new<P: 'static + AsRef<Path>>(path: P) -> Result<Self> {
         let real_path = path.as_ref();
         Self::open_storage(real_path)?;
 
