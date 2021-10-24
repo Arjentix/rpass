@@ -6,14 +6,14 @@ use rand::distributions::Alphanumeric;
 /// from `storage` and writes random encrypted string into
 /// `session.login_confirmation`.
 /// Returns *Ok() with login confirmation* in success
-/// 
+///
 /// The next step user should decrypt that random confirmation string,
 /// encrypt if with storage public key and send it back.
-/// 
+///
 /// See [`super::confirm_login()`] function for second part
-/// 
+///
 /// # Errors
-/// 
+///
 /// * `EmptyUsername` - if no username was provided
 /// * `Storage` - if can't create record cause of some error in
 /// `storage`

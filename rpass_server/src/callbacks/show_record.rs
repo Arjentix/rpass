@@ -1,9 +1,9 @@
 use super::{Result, Error, Session, ArgIter, utils};
 
 /// Shows record for resource from `arg_iter` for user `session.username`
-/// 
+///
 /// # Errors
-/// 
+///
 /// * `UnacceptableRequestAtThisState` - if not `session.is_authorized`
 /// * `EmptyResourceName` - if resource name wasn't provided
 /// * `InvalidResourceName` - if resource name is invalid
@@ -100,7 +100,7 @@ mod tests {
         let mock_user_storage: Arc<RwLock<storage::UserStorage>> = Arc::default();
         mock_user_storage.write().unwrap().expect_get_record().times(1)
             .with(predicate::eq(TEST_RESOURCE))
-            .returning(|_| 
+            .returning(|_|
                 Err(
                     storage::Error::CantParseRecord(
                         <storage::Record as FromStr>::Err::EmptyString

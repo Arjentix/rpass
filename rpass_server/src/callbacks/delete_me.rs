@@ -2,9 +2,9 @@ use super::{Result, Error, AsyncStorage, Session};
 
 /// Deletes current user. Takes *username* from `session` and deletes it in
 /// `storage`
-/// 
+///
 /// # Errors
-/// 
+///
 /// * `UnacceptableRequestAtThisState` - if not `session.is_authorized`
 /// * `Storage` - if can't create record cause of some error in
 /// `storage`

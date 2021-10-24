@@ -3,13 +3,13 @@ use crate::storage::Key;
 use std::str::FromStr;
 
 /// Registers new user in `storage` with username and key taken from `arg_iter`
-/// 
+///
 /// Performs username validity check
-/// 
+///
 /// Returns *Ok("Ok")* in success
-/// 
+///
 /// # Errors
-/// 
+///
 /// * `EmptyUsername` - if no username was provided
 /// * `InvalidUsername` - if username is invalid
 /// * `EmptyKey` - if no key was provided

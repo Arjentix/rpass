@@ -36,9 +36,9 @@ pub struct Storage {
 #[cfg_attr(test, automock, allow(dead_code))]
 impl Storage {
     /// Initializes storage from given path to storage folder
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Any possible error during file/directory opening/writing
     pub fn new<P: 'static + AsRef<Path>>(path: P) -> Result<Self> {
         let real_path = path.as_ref();
@@ -55,12 +55,12 @@ impl Storage {
     }
 
     /// Adds new user to the storage
-    /// 
+    ///
     /// Creates user folder with name `username` ans *key.pub* file with
     /// `pub_key` content. Makes no `username` validation
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Any errors during creating folder and writing file
     pub fn add_new_user(&mut self, username: &str, pub_key: &Key)
             -> Result<()> {
@@ -72,19 +72,19 @@ impl Storage {
     }
 
     /// Deletes user's files and directory
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// See [`std::fs::remove_dir_all()`]
     pub fn delete_user(&mut self, username: &str) -> Result<()> {
         self.username_to_user_storage.remove(username);
         fs::remove_dir_all(self.path.join(username)).map_err(|err| err.into())
     }
-    
+
     /// Gets UserStorage struct for user with name `username`
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// See [`UserStorage::new()`]
     pub fn get_user_storage(&mut self, username: &str)
             -> Result<Arc<RwLock<UserStorage>>> {
@@ -104,9 +104,9 @@ impl Storage {
     }
 
     /// Reads and returns user public key
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Any error during file reading
     pub fn get_user_pub_key(&self, username: &str) -> Result<Key> {
         let pub_key_file = self.path.join(username).join(PUB_KEY_FILENAME);
@@ -118,9 +118,9 @@ impl Storage {
 
     /// Writes `record` into `username` directory with filename
     /// `record.resource`
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Any error during file writing
     pub fn write_record(&mut self, username: &str, record: &Record)
             -> Result<()> {
@@ -173,9 +173,9 @@ impl Storage {
     }
 
     /// Open storage directory
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Any possible error during file/directory opening/writing
     fn open_storage(path: &Path) -> Result<()> {
         const DIRECTORY_MESSAGE_PREFIX: &str = "Rpass storage directory";
@@ -197,9 +197,9 @@ impl Storage {
 
     /// Creates public and secret keys and write them to the files *key.pub*
     /// and *key.sec*
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Any possible error during files writing
     fn init_keys(path: &Path) -> Result<()> {
         let (pub_key, sec_key) = Key::generate_pair();
@@ -209,9 +209,9 @@ impl Storage {
     }
 
     /// Reads public and secret keys from files *key.pub* and *key.sec*
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Any possible error during files reading and keys constructing
     fn read_keys(path: &Path) -> Result<(Key, Key)> {
         let pub_key = Key::from_bytes(&fs::read(path.join("key.pub"))?)?;

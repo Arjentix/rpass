@@ -3,16 +3,16 @@ use super::{Result, Error, AsyncStorage, Session, ArgIter};
 /// Second and final part of user logging. Reads encrypted confirmation string
 /// from `arg_iter`, decrypts it with `storage.sec_key` and checks if it is
 /// equal to the `session.login_confirmation`.
-/// 
+///
 /// If everything is good then:
 /// 1. Sets `session.is_authorized` to *true*
 /// 2. Sets `session.user_storage` to *Some(_)*
 /// 3. Return *Ok("Ok")*
-/// 
+///
 /// See [`super::login()`] function for first part
-/// 
+///
 /// # Errors
-/// 
+///
 /// * `UnacceptableRequestAtThisState` - if there isn't *login_confirmation* in
 /// `session` or user already authorized
 /// * `EmptyConfirmationString` - if confirmation string wasn't provided
@@ -37,7 +37,7 @@ pub fn confirm_login(storage: AsyncStorage, session: &mut Session,
     if &confirmation != session.login_confirmation.as_ref().unwrap() {
         return Err(Error::InvalidConfirmationString);
     }
-    
+
     let mut storage_write = storage.write().unwrap();
     session.user_storage = Some(storage_write
         .get_user_storage(&session.username)?);

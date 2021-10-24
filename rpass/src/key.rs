@@ -10,9 +10,9 @@ pub struct Key (pub BigUint, pub BigUint);
 
 impl Key {
     /// Returns byte representation of key
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// Panics if can't write to the buffer
     pub fn as_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
@@ -28,7 +28,7 @@ impl Key {
     }
 
     /// Generate pair of public and secret keys
-    /// 
+    ///
     /// TODO
     pub fn generate_pair() -> (Self, Self) {
         (Key(269.to_biguint().unwrap(), 221.to_biguint().unwrap()),
@@ -36,23 +36,23 @@ impl Key {
     }
 
     /// Encrypt `s` with key
-    /// 
+    ///
     /// TODO
     pub fn encrypt(&self, s: &str) -> String {
         s.to_owned()
     }
 
     /// Decrypt `s` with key
-    /// 
+    ///
     /// TODO
     pub fn decrypt(&self, s: &str) -> String {
         s.to_owned()
     }
 
     /// Writes one part of key to the `write`
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// Panics if can't write to the buffer
     fn write_part(part: &BigUint, write: &mut dyn Write) {
         let part_bytes = part.to_bytes_le();
@@ -81,13 +81,13 @@ impl FromStr for Key {
     type Err = ParseKeyError;
 
     /// Constructs new key from string in format `<first_num>:<second_num>`
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use std::str::FromStr;
     /// use rpass::key::{Key, BigUint, ToBigUint};
-    /// 
+    ///
     /// let key = Key::from_str("898:19634").unwrap();
     /// assert_eq!(key.0, 898u64.to_biguint().unwrap());
     /// assert_eq!(key.1, 19634u64.to_biguint().unwrap());
@@ -105,12 +105,12 @@ impl FromStr for Key {
 
 impl ToString for Key {
     /// Converts key to string
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use rpass::key::{Key, ToBigUint};
-    /// 
+    ///
     /// let key = Key(845u64.to_biguint().unwrap(), 947u64.to_biguint().unwrap());
     /// assert_eq!(key.to_string(), "845:947");
     /// ```
@@ -138,7 +138,7 @@ mod tests {
         bytes.write_u16::<LittleEndian>(n as u16).unwrap();
 
         let key = Key(big_e, big_n);
-        
+
         assert_eq!(bytes, key.as_bytes());
     }
 

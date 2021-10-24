@@ -2,9 +2,9 @@ use super::{Result, Error, AsyncStorage, Session};
 
 /// Lists all records names for user `session.username`.
 /// Names will be delimited by a new line character
-/// 
+///
 /// # Errors
-/// 
+///
 /// * `UnacceptableRequestAtThisState` - if not `session.is_authorized`
 /// * `Storage` - if can't create record cause of some error in
 /// `storage`

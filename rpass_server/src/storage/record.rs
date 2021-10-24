@@ -20,14 +20,14 @@ impl FromStr for Record {
 
     /// Constructs new record from string. Expects password and notes delimited
     /// by new line character
-    /// 
+    ///
     /// *resource* field will be set to default
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (password, notes) = s.split_once('\n')
             .ok_or(ParseRecordError::EmptyString)?;
         Ok(Record {
             resource: String::default(),
-            password: password.to_owned(), 
+            password: password.to_owned(),
             notes: notes.to_owned()
         })
     }
@@ -35,7 +35,7 @@ impl FromStr for Record {
 
 impl ToString for Record {
     /// Converts record to string **without** *resource* field
-    /// 
+    ///
     /// Password will be placed at the first line. The next lines is notes
     fn to_string(&self) -> String {
         self.password.clone() + "\n" + &self.notes

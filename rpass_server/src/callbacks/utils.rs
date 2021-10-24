@@ -1,4 +1,4 @@
-/// Checks if `name` is a *safe* string to be a filename. 
+/// Checks if `name` is a *safe* string to be a filename.
 /// Valid means:
 /// * Not empty
 /// * All characters are ascii alphanumeric or `.`, or `@`, or `_`

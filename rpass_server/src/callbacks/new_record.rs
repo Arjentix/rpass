@@ -3,9 +3,9 @@ use std::str::FromStr;
 
 /// Adds new record for user `session.username`.
 /// Reads resource name and record (See [`Record::from_str()`]) from `arg_iter`
-/// 
+///
 /// # Errors
-/// 
+///
 /// * `UnacceptableRequestAtThisState` - if not `session.is_authorized`
 /// * `EmptyResourceName` - if resource name wasn't provided
 /// * `InvalidResourceName` - if resource name is invalid

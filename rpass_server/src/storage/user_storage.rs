@@ -16,9 +16,9 @@ pub struct UserStorage {
 #[cfg_attr(test, automock, allow(dead_code))]
 impl UserStorage {
     /// Initializes UserDir from given `path`
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// * UserDoesNotExists - if `path` does not exist or isn't a directory
     /// * Io - if can't read key from *path/key.pub* file
     pub(super) fn new<P: 'static + AsRef<Path>>(path: P) -> Result<Self> {
@@ -38,9 +38,9 @@ impl UserStorage {
     }
 
     /// Writes `record` into user's directory with filename `record.resource`
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// * Io - if some error occurred during record writing
     pub fn write_record(&mut self, record: &Record)
             -> Result<()> {
@@ -49,9 +49,9 @@ impl UserStorage {
     }
 
     /// Gets record about `resource`
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// * Io - if some error occurred during record file reading
     /// * CantParseRecord - if can't parse record
     pub fn get_record(&self, resource: &str) -> Result<Record> {
@@ -64,7 +64,7 @@ impl UserStorage {
     }
 
     /// Gets list of names of all records
-    /// 
+    ///
     /// # Errors
     /// Io - if can't read items in user directory
     pub fn list_records(&self) -> Result<Vec<String>> {
