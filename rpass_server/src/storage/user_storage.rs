@@ -21,7 +21,7 @@ impl UserStorage {
     /// 
     /// * UserDoesNotExists - if `path` does not exist or isn't a directory
     /// * Io - if can't read key from *path/key.pub* file
-    pub fn new<P: 'static + AsRef<Path>>(path: P) -> Result<Self> {
+    pub(super) fn new<P: 'static + AsRef<Path>>(path: P) -> Result<Self> {
         let real_path = path.as_ref();
         if !real_path.exists() || !real_path.is_dir() {
             return Err(Error::UserDoesNotExist(
