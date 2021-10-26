@@ -72,11 +72,20 @@ impl Storage {
     }
 
     /// Deletes user's files and directory
+    /// There should be no any Arc on `username` user storage
     ///
     /// # Errors
     ///
-    /// See [`std::fs::remove_dir_all()`]
+    /// * UnsupportedActionForMultiSession -- if there are some active sessions
+    /// of given user
+    /// * Io -- if any error occurred during [`std::fs::remove_dir_all()`]
     pub fn delete_user(&mut self, username: &str) -> Result<()> {
+        if let Some(weak) = self.username_to_user_storage.get(username) {
+            if weak.strong_count() > 0 {
+                return Err(Error::UnsupportedActionForMultiSession);
+            }
+        };
+
         self.username_to_user_storage.remove(username);
         fs::remove_dir_all(self.path.join(username)).map_err(|err| err.into())
     }

@@ -19,5 +19,8 @@ pub enum Error {
     UserDoesNotExist(String),
 
     #[error("record parsing error: {0}")]
-    CantParseRecord(#[from] <Record as FromStr>::Err)
+    CantParseRecord(#[from] <Record as FromStr>::Err),
+
+    #[error("can't perform action cause of others active sessions")]
+    UnsupportedActionForMultiSession
 }
