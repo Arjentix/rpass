@@ -29,8 +29,8 @@ pub fn delete_me(storage: AsyncStorage, session: &mut Session)
 
 #[cfg(test)]
 mod tests {
-    use super::{super::storage, *};
-    use std::sync::{Arc, RwLock};
+    use super::*;
+    use super::super::{storage, AsyncUserStorage};
     use std::io;
     use mockall::predicate;
 
@@ -67,8 +67,7 @@ mod tests {
         let mock_storage = AsyncStorage::default();
         let mut session = Session {
             username: TEST_USER.to_owned(),
-            user_storage: Some(Arc::new(RwLock::new(
-                storage::UserStorage::default()))),
+            user_storage: Some(AsyncUserStorage::default()),
             .. Session::default()
         };
 
@@ -81,9 +80,7 @@ mod tests {
             );
             mock_storage_write.expect_get_user_storage()
             .with(predicate::eq(TEST_USER))
-            .returning(|_| Ok(
-                Arc::new(RwLock::new(storage::UserStorage::default()))
-            ));
+            .returning(|_| Ok(AsyncUserStorage::default()));
         }
         assert!(delete_me(mock_storage, &mut session).is_err());
         assert!(session.user_storage.is_some());
@@ -95,8 +92,7 @@ mod tests {
         let mock_storage = AsyncStorage::default();
         let mut session = Session {
             username : TEST_USER.to_owned(),
-            user_storage: Some(Arc::new(RwLock::new(
-                storage::UserStorage::default()))),
+            user_storage: Some(AsyncUserStorage::default()),
             .. Session::default()
         };
 

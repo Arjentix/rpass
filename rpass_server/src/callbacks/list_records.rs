@@ -33,8 +33,8 @@ fn to_string_with_delimiter(values: &[String], delimiter: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::callbacks::AsyncUserStorage;
-    use super::{*, super::storage};
+    use super::*;
+    use super::super::{storage, AsyncUserStorage};
     use std::io;
 
     #[test]
