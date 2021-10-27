@@ -31,3 +31,6 @@ use crate::session::Session;
 use storage::Storage;
 
 type AsyncStorage = Arc<RwLock<Storage>>;
+
+#[cfg(test)]
+type AsyncUserStorage = Arc<RwLock<storage::UserStorage>>;

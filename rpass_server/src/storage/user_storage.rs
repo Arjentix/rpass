@@ -66,6 +66,7 @@ impl UserStorage {
     /// Gets list of names of all records
     ///
     /// # Errors
+    ///
     /// Io - if can't read items in user directory
     pub fn list_records(&self) -> Result<Vec<String>> {
         let mut records_names = vec![];

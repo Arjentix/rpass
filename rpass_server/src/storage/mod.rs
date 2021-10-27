@@ -139,29 +139,6 @@ impl Storage {
         fs::write(record_file, record.to_string()).map_err(|err| err.into())
     }
 
-    /// Gets list of names of all records for user `username`
-    pub fn list_records(&self, username: &str) -> Result<Vec<String>> {
-        let user_dir = self.get_old_user_dir(username)?;
-
-        let mut records_names = vec![];
-        for entry_res in fs::read_dir(user_dir)? {
-            let entry = entry_res?;
-            let file = entry.path();
-            if !file.is_file() {
-                continue;
-            }
-
-            match file.file_name() {
-                Some(filename) if filename != "key.pub" =>
-                    records_names.push(filename.to_string_lossy().into_owned()),
-                _ => ()
-            }
-        }
-        records_names.sort();
-
-        Ok(records_names)
-    }
-
     /// Gets storage public key
     pub fn get_pub_key(&self) -> &Key {
         &self.pub_key

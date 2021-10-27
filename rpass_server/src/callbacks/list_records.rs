@@ -1,4 +1,4 @@
-use super::{Result, Error, AsyncStorage, Session};
+use super::{Result, Error, Session};
 
 /// Lists all records names for user `session.username`.
 /// Names will be delimited by a new line character
@@ -8,15 +8,15 @@ use super::{Result, Error, AsyncStorage, Session};
 /// * `UnacceptableRequestAtThisState` - if not `session.is_authorized`
 /// * `Storage` - if can't create record cause of some error in
 /// `storage`
-pub fn list_records(storage: AsyncStorage, session: &Session)
+pub fn list_records(session: &Session)
         -> Result<String> {
     if !session.is_authorized {
         return Err(Error::UnacceptableRequestAtThisState);
     }
 
     let record_names = {
-        let storage_read = storage.read().unwrap();
-        storage_read.list_records(&session.username)?
+        let storage_read = session.user_storage.as_ref().unwrap().read().unwrap();
+        storage_read.list_records()?
     };
 
     Ok(to_string_with_delimiter(&record_names, "\n"))
@@ -33,65 +33,59 @@ fn to_string_with_delimiter(values: &[String], delimiter: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use crate::callbacks::AsyncUserStorage;
     use super::{*, super::storage};
-    use mockall::predicate;
-
-    const TEST_USER: &str = "test_user";
+    use std::io;
 
     #[test]
     fn test_ok() {
-        let mock_storage = AsyncStorage::default();
+        let mock_user_storage = AsyncUserStorage::default();
+        mock_user_storage.write().unwrap().expect_list_records().times(1)
+            .returning(|| Ok(vec!["first".to_owned(), "second".to_owned()]));
         let session = Session {
             is_authorized: true,
-            username : TEST_USER.to_owned(),
+            user_storage: Some(mock_user_storage),
             .. Session::default()
         };
 
-        mock_storage.write().unwrap().expect_list_records().times(1)
-            .with(predicate::eq(TEST_USER))
-            .returning(|_| Ok(vec!["first".to_owned(), "second".to_owned()]));
-        assert_eq!(list_records(mock_storage, &session).unwrap(),
-            "first\nsecond");
+        assert_eq!(list_records(&session).unwrap(), "first\nsecond");
     }
 
     #[test]
     fn test_empty_list() {
-        let mock_storage = AsyncStorage::default();
+        let mock_user_storage = AsyncUserStorage::default();
+        mock_user_storage.write().unwrap().expect_list_records().times(1)
+            .returning(|| Ok(vec![]));
         let session = Session {
             is_authorized: true,
-            username : TEST_USER.to_owned(),
+            user_storage: Some(mock_user_storage),
             .. Session::default()
         };
 
-        mock_storage.write().unwrap().expect_list_records().times(1)
-            .with(predicate::eq(TEST_USER))
-            .returning(|_| Ok(vec![]));
-        assert_eq!(list_records(mock_storage, &session).unwrap(), "");
+        assert_eq!(list_records(&session).unwrap(), "");
     }
 
     #[test]
     fn test_non_authorized() {
-        let mock_storage = AsyncStorage::default();
         let session = Session::default();
 
-        assert!(matches!(list_records(mock_storage, &session),
+        assert!(matches!(list_records(&session),
             Err(Error::UnacceptableRequestAtThisState)));
     }
 
     #[test]
     fn test_storage_error() {
-        let mock_storage = AsyncStorage::default();
+        let mock_user_storage = AsyncUserStorage::default();
+        mock_user_storage.write().unwrap().expect_list_records().times(1)
+            .returning(||Err(storage::Error::Io(
+                io::Error::new(io::ErrorKind::Other, ""))));
         let session = Session {
             is_authorized: true,
-            username : TEST_USER.to_owned(),
+            user_storage: Some(mock_user_storage),
             .. Session::default()
         };
 
-        mock_storage.write().unwrap().expect_list_records().times(1)
-            .with(predicate::eq(TEST_USER))
-            .returning(|_|
-                Err(storage::Error::UserDoesNotExist(TEST_USER.to_owned())));
-        assert!(matches!(list_records(mock_storage, &session),
+        assert!(matches!(list_records(&session),
             Err(Error::Storage(_))));
     }
 }
