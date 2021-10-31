@@ -1,4 +1,4 @@
-use super::{Result, Error, Session};
+use super::{Result, Error, session::*};
 
 /// Ends user's session.
 ///
@@ -9,15 +9,11 @@ use super::{Result, Error, Session};
 ///
 /// * `UnacceptableRequestAtThisState` - if session is already ended
 pub fn quit(session: &mut Session) -> Result<String> {
-    if session.is_ended {
+    if session.is_ended() {
         return Err(Error::UnacceptableRequestAtThisState);
     }
 
-    session.is_authorized = false;
-    session.username = String::default();
-    session.user_storage = None;
-    session.is_ended = true;
-
+    *session = Session::Ended;
     Ok("Ok".to_owned())
 }
 
@@ -27,23 +23,15 @@ mod tests {
 
     #[test]
     fn test_ok() {
-        let mut session = Session {
-            is_authorized: true,
-            .. Session::default()
-        };
+        let mut session = Session::default();
 
         assert_eq!(quit(&mut session).unwrap(), "Ok".to_owned());
-        assert!(!session.is_authorized);
-        assert_eq!(session.username, String::default());
-        assert!(session.is_ended);
+        assert!(session.is_ended());
     }
 
     #[test]
     fn test_already_ended() {
-        let mut session = Session {
-            is_ended: true,
-            .. Session::default()
-        };
+        let mut session = Session::Ended;
 
         assert!(matches!(quit(&mut session),
             Err(Error::UnacceptableRequestAtThisState)));
