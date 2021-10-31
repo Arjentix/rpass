@@ -1,10 +1,10 @@
-use super::{Result, Error, AsyncStorage, Session, ArgIter};
+use super::{Result, Error, AsyncStorage, session::*, ArgIter};
 use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
 
 /// First part of user logging. Reads username from `arg_iter`, gets his key
-/// from `storage` and writes random encrypted string into
-/// `session.login_confirmation`.
+/// from `storage`, initializes `session` with Unauthorized variant and writes
+/// random encrypted string into it's `login_confirmation` field.
 /// Returns *Ok() with login confirmation* in success
 ///
 /// The next step user should decrypt that random confirmation string,
@@ -33,10 +33,12 @@ pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
         .map(char::from)
         .collect();
 
-    session.login_confirmation = Some(user_pub_key.encrypt(&rand_string));
-    session.is_authorized = false;
-    session.username = username;
-    Ok(session.login_confirmation.as_ref().unwrap().clone())
+    let login_confirmation = user_pub_key.encrypt(&rand_string);
+    *session = Session::Unauthorized(Unauthorized {
+        username,
+        login_confirmation: login_confirmation.clone()
+    });
+    Ok(login_confirmation)
 }
 
 #[cfg(test)]
@@ -60,9 +62,8 @@ mod tests {
 
         let res = login(mock_storage, &mut session, &mut arg_iter);
         assert!(res.is_ok());
-        assert!(matches!(session.login_confirmation, Some(_)));
-        assert!(!session.is_authorized);
-        assert_eq!(session.username, TEST_USER);
+        assert!(session.is_unauthorized());
+        assert_eq!(session.as_unauthorized().unwrap().username, TEST_USER);
     }
 
     #[test]

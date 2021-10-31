@@ -25,7 +25,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 use std::sync::{Arc, RwLock};
 
 use crate::request_dispatcher::{ArgIter};
-use crate::session::Session;
+use crate::session;
 
 #[mockall_double::double]
 use storage::Storage;
