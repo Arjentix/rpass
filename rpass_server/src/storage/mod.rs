@@ -12,7 +12,6 @@ pub use rpass::key::*;
 
 use std::path::{Path, PathBuf};
 use std::fs;
-use std::string::ToString;
 use std::sync::{Weak, Arc, RwLock};
 use std::collections::HashMap;
 
@@ -125,20 +124,6 @@ impl Storage {
         Key::from_bytes(&fs::read(pub_key_file)?).map_err(|err| err.into())
     }
 
-    /// Writes `record` into `username` directory with filename
-    /// `record.resource`
-    ///
-    /// # Errors
-    ///
-    /// Any error during file writing
-    pub fn write_record(&mut self, username: &str, record: &Record)
-            -> Result<()> {
-        let user_dir = self.get_old_user_dir(username)?;
-
-        let record_file = user_dir.join(&record.resource);
-        fs::write(record_file, record.to_string()).map_err(|err| err.into())
-    }
-
     /// Gets storage public key
     pub fn get_pub_key(&self) -> &Key {
         &self.pub_key
@@ -147,15 +132,6 @@ impl Storage {
     /// Gets storage secret key
     pub fn get_sec_key(&self) -> &Key {
         &self.sec_key
-    }
-
-    /// Gets user directory, performing checking
-    fn get_old_user_dir(&self, username: &str) -> Result<PathBuf> {
-        let user_dir = self.path.join(username);
-        if !user_dir.is_dir() {
-            return Err(Error::UserDoesNotExist(username.to_owned()));
-        }
-        Ok(user_dir)
     }
 
     /// Open storage directory

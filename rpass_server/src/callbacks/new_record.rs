@@ -1,4 +1,4 @@
-use super::{storage, Result, Error, AsyncStorage, Session, ArgIter, utils};
+use super::{storage, Result, Error, Session, ArgIter, utils};
 use std::str::FromStr;
 
 /// Adds new record for user `session.username`.
@@ -12,8 +12,8 @@ use std::str::FromStr;
 /// * `EmptyRecordContent` - if record wasn't provided
 /// * `InvalidRecordFormat` - if can't parse *Record*
 /// * `Storage` - if can't create record cause of some error in
-/// `storage`
-pub fn new_record(storage: AsyncStorage, session: &Session, arg_iter: ArgIter)
+/// `session.user_storage`
+pub fn new_record(session: &Session, arg_iter: ArgIter)
         -> Result<String> {
     if !session.is_authorized {
         return Err(Error::UnacceptableRequestAtThisState);
@@ -30,14 +30,16 @@ pub fn new_record(storage: AsyncStorage, session: &Session, arg_iter: ArgIter)
             &arg_iter.next().ok_or(Error::EmptyRecordContent)?)?
     };
 
-    let mut storage_write = storage.write().unwrap();
-    storage_write.write_record(&session.username, &record)?;
+    let mut storage_write = session.user_storage.as_ref().unwrap()
+        .write().unwrap();
+    storage_write.write_record(&record)?;
     Ok("Ok".to_owned())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::super::{storage, AsyncUserStorage};
     use std::io;
     use mockall::predicate;
 
@@ -55,19 +57,20 @@ mod tests {
             password: PASSWORD.to_owned(),
             notes: NOTES.to_owned()
         };
-        let mock_storage = AsyncStorage::default();
+
+        let mock_storage = AsyncUserStorage::default();
+        mock_storage.write().unwrap().expect_write_record().times(1)
+            .with(predicate::eq(expected_record)).returning(|_| Ok(()));
         let session = Session {
             is_authorized: true,
             username : TEST_USER.to_owned(),
+            user_storage: Some(mock_storage),
             .. Session::default()
         };
         let args = [RESOURCE.to_owned(), content];
         let mut arg_iter = args.iter().cloned();
 
-        mock_storage.write().unwrap().expect_write_record().times(1)
-            .with(predicate::eq(TEST_USER), predicate::eq(expected_record))
-            .returning(|_, _| Ok(()));
-        assert_eq!(new_record(mock_storage, &session, &mut arg_iter).unwrap(),
+        assert_eq!(new_record(&session, &mut arg_iter).unwrap(),
             "Ok".to_owned());
     }
 
@@ -75,7 +78,6 @@ mod tests {
     fn test_non_authorized() {
         let content = String::from(PASSWORD) + "\n" + NOTES;
 
-        let mock_storage = AsyncStorage::default();
         let session = Session {
             username : TEST_USER.to_owned(),
             .. Session::default()
@@ -83,13 +85,12 @@ mod tests {
         let args = [RESOURCE.to_owned(), content];
         let mut arg_iter = args.iter().cloned();
 
-        assert!(matches!(new_record(mock_storage, &session, &mut arg_iter),
+        assert!(matches!(new_record(&session, &mut arg_iter),
             Err(Error::UnacceptableRequestAtThisState)));
     }
 
     #[test]
     fn test_empty_resource() {
-        let mock_storage = AsyncStorage::default();
         let session = Session {
             is_authorized: true,
             username : TEST_USER.to_owned(),
@@ -98,13 +99,12 @@ mod tests {
         let args = [];
         let mut arg_iter = args.iter().cloned();
 
-        assert!(matches!(new_record(mock_storage, &session, &mut arg_iter),
+        assert!(matches!(new_record(&session, &mut arg_iter),
             Err(Error::EmptyResourceName)));
     }
 
     #[test]
     fn test_invalid_resource() {
-        let mock_storage = AsyncStorage::default();
         let session = Session {
             is_authorized: true,
             username : TEST_USER.to_owned(),
@@ -113,13 +113,12 @@ mod tests {
         let args = ["../illegal/resource/name".to_owned()];
         let mut arg_iter = args.iter().cloned();
 
-        assert!(matches!(new_record(mock_storage, &session, &mut arg_iter),
+        assert!(matches!(new_record(&session, &mut arg_iter),
             Err(Error::InvalidResourceName)));
     }
 
     #[test]
     fn test_empty_record_content() {
-        let mock_storage = AsyncStorage::default();
         let session = Session {
             is_authorized: true,
             username : TEST_USER.to_owned(),
@@ -128,14 +127,13 @@ mod tests {
         let args = [RESOURCE.to_owned()];
         let mut arg_iter = args.iter().cloned();
 
-        assert!(matches!(new_record(mock_storage, &session, &mut arg_iter),
+        assert!(matches!(new_record(&session, &mut arg_iter),
             Err(Error::EmptyRecordContent)));
     }
 
     #[test]
     fn test_invalid_record_format() {
         let content = String::from(PASSWORD);
-        let mock_storage = AsyncStorage::default();
         let session = Session {
             is_authorized: true,
             username : TEST_USER.to_owned(),
@@ -144,7 +142,7 @@ mod tests {
         let args = [RESOURCE.to_owned(), content];
         let mut arg_iter = args.iter().cloned();
 
-        assert!(matches!(new_record(mock_storage, &session, &mut arg_iter),
+        assert!(matches!(new_record(&session, &mut arg_iter),
             Err(Error::InvalidRecordFormat(_))));
     }
 
@@ -157,23 +155,24 @@ mod tests {
             password: PASSWORD.to_owned(),
             notes: NOTES.to_owned()
         };
-        let mock_storage = AsyncStorage::default();
-        let session = Session {
-            is_authorized: true,
-            username : TEST_USER.to_owned(),
-            .. Session::default()
-        };
-        let args = [RESOURCE.to_owned(), content];
-        let mut arg_iter = args.iter().cloned();
 
+        let mock_storage = AsyncUserStorage::default();
         mock_storage.write().unwrap().expect_write_record().times(1)
-            .with(predicate::eq(TEST_USER), predicate::eq(expected_record))
-            .returning(|_, _|
+            .with(predicate::eq(expected_record))
+            .returning(|_|
                 Err(storage::Error::Io(
                     io::Error::new(io::ErrorKind::Other, ""))
                 )
             );
-        assert!(matches!(new_record(mock_storage, &session, &mut arg_iter),
+        let session = Session {
+            is_authorized: true,
+            username: TEST_USER.to_owned(),
+            user_storage: Some(mock_storage),
+            .. Session::default()
+        };
+        let args = [RESOURCE.to_owned(), content];
+        let mut arg_iter = args.iter().cloned();
+        assert!(matches!(new_record(&session, &mut arg_iter),
             Err(Error::Storage(_))));
     }
 }
