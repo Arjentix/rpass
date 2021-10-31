@@ -83,7 +83,7 @@ impl UserStorage {
                 _ => ()
             }
         }
-        records_names.sort(); // TODO use BTreeSet instead of Vector
+        records_names.sort();
 
         Ok(records_names)
     }
