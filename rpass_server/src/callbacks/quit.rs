@@ -15,6 +15,7 @@ pub fn quit(session: &mut Session) -> Result<String> {
 
     session.is_authorized = false;
     session.username = String::default();
+    session.user_storage = None;
     session.is_ended = true;
 
     Ok("Ok".to_owned())
