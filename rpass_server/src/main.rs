@@ -113,7 +113,7 @@ fn handle_client(mut stream: TcpStream,
 
     send_storage_key(&mut stream, storage)?;
 
-    while !session.is_ended {
+    while !session.is_ended() {
         let bytes = read_request_bytes(&mut reader)?;
         let mut request = match String::from_utf8(bytes) {
             Err(_) => {
