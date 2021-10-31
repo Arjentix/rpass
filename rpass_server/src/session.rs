@@ -1,7 +1,10 @@
 use super::storage::UserStorage;
 use std::sync::{Arc, RwLock};
 
+use enum_as_inner::EnumAsInner;
+
 /// Enum representing user session
+#[derive(EnumAsInner)]
 pub enum Session {
     /// Initial state of every session
     Unauthorized(Unauthorized),
@@ -15,6 +18,7 @@ pub enum Session {
 
 #[derive(Default)]
 pub struct Unauthorized {
+    pub username: String,
     pub login_confirmation: String,
 }
 
