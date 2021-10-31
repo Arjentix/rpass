@@ -24,10 +24,26 @@ pub struct Authorized {
 }
 
 impl Session {
+    /// Checks if session is unauthorized
+    pub fn is_unauthorized(&self) -> bool {
+        match self {
+            Unauthorized => true,
+            _ => false
+        }
+    }
+
     /// Checks if session is authorized
     pub fn is_authorized(&self) -> bool {
         match self {
             Authorized => true,
+            _ => false
+        }
+    }
+
+    /// Checks if session is ended
+    pub fn is_ended(&self) -> bool {
+        match self {
+            Ended => true,
             _ => false
         }
     }
