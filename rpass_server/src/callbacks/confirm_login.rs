@@ -92,7 +92,6 @@ mod tests {
         let res = confirm_login(mock_storage, &mut session, &mut arg_iter);
         assert!(matches!(res,
             Err(Error::UnacceptableRequestAtThisState)));
-        assert!(session.is_unauthorized());
     }
 
     #[test]
@@ -105,7 +104,6 @@ mod tests {
         let res = confirm_login(mock_storage, &mut session, &mut arg_iter);
         assert!(matches!(res,
             Err(Error::UnacceptableRequestAtThisState)));
-        assert!(session.is_unauthorized());
     }
 
     #[test]

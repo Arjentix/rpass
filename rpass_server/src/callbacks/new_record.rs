@@ -62,7 +62,7 @@ mod tests {
             .with(predicate::eq(expected_record)).returning(|_| Ok(()));
         let session = Session::Authorized(Authorized {
             username: TEST_USER.to_owned(),
-            user_storage: AsyncUserStorage::default()
+            user_storage: mock_storage
         });
         let args = [RESOURCE.to_owned(), content];
         let mut arg_iter = args.iter().cloned();
