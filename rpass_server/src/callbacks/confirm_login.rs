@@ -89,7 +89,7 @@ mod tests {
 
         let mut arg_iter = [""].iter().map(|&s| s.to_owned());
 
-        let res = confirm_login(mock_storage.clone(), &mut session, &mut arg_iter);
+        let res = confirm_login(mock_storage, &mut session, &mut arg_iter);
         assert!(matches!(res,
             Err(Error::UnacceptableRequestAtThisState)));
         assert!(session.is_unauthorized());
@@ -102,7 +102,7 @@ mod tests {
 
         let mut arg_iter = [""].iter().map(|&s| s.to_owned());
 
-        let res = confirm_login(mock_storage.clone(), &mut session, &mut arg_iter);
+        let res = confirm_login(mock_storage, &mut session, &mut arg_iter);
         assert!(matches!(res,
             Err(Error::UnacceptableRequestAtThisState)));
         assert!(session.is_unauthorized());

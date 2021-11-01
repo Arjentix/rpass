@@ -27,29 +27,21 @@ pub struct Authorized {
     pub user_storage: Arc<RwLock<UserStorage>>
 }
 
+#[allow(dead_code)]
 impl Session {
     /// Checks if session is unauthorized
     pub fn is_unauthorized(&self) -> bool {
-        match self {
-            Session::Unauthorized(_) => true,
-            _ => false
-        }
+        matches!(self, Session::Unauthorized(_))
     }
 
     /// Checks if session is authorized
     pub fn is_authorized(&self) -> bool {
-        match self {
-            Session::Authorized(_) => true,
-            _ => false
-        }
+        matches!(self, Session::Authorized(_))
     }
 
     /// Checks if session is ended
     pub fn is_ended(&self) -> bool {
-        match self {
-            Session::Ended => true,
-            _ => false
-        }
+        matches!(self, Session::Ended)
     }
 }
 
