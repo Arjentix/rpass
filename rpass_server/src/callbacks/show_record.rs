@@ -1,33 +1,34 @@
-use super::{Result, Error, Session, ArgIter, utils};
+use super::{Result, Error, session::*, ArgIter, utils};
 
-/// Shows record for resource from `arg_iter` for user `session.username`
+/// Shows record for resource from `arg_iter` for user stored in `session`
 ///
 /// # Errors
 ///
-/// * `UnacceptableRequestAtThisState` - if not `session.is_authorized`
+/// * `UnacceptableRequestAtThisState` - if session is not an Authorized
+/// variant
 /// * `EmptyResourceName` - if resource name wasn't provided
 /// * `InvalidResourceName` - if resource name is invalid
-/// * `Storage` - if can't retrieve record cause of some error in
-/// `storage`
+/// * `Storage` - if can't retrieve record cause of some error in `user_storage`
+/// from `session`
 pub fn show_record(session: &Session, arg_iter: ArgIter)
         -> Result<String> {
-    if !session.is_authorized {
-        return Err(Error::UnacceptableRequestAtThisState);
-    }
+    let authorized_session = session.as_authorized()
+        .ok_or(Error::UnacceptableRequestAtThisState)?;
 
     let resource = arg_iter.next().ok_or(Error::EmptyResourceName)?;
     if !utils::is_safe_for_filename(&resource) {
         return Err(Error::InvalidResourceName);
     }
 
-    let storage_read = session.user_storage.as_ref().unwrap().read().unwrap();
+    let storage_read = authorized_session.user_storage.read().unwrap();
     let record = storage_read.get_record(&resource)?;
     Ok(record.to_string())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{super::storage, *};
+    use super::*;
+    use super::super::{AsyncUserStorage, storage};
     use std::sync::{Arc, RwLock};
     use std::str::FromStr;
     use mockall::predicate;
@@ -42,12 +43,10 @@ mod tests {
             .with(predicate::eq(TEST_RESOURCE))
             .returning(|_| Ok(storage::Record::default()));
 
-        let session = Session {
-            is_authorized: true,
-            username : TEST_USER.to_owned(),
-            user_storage: Some(mock_user_storage),
-            .. Session::default()
-        };
+        let session = Session::Authorized(Authorized {
+            username: TEST_USER.to_owned(),
+            user_storage: mock_user_storage
+        });
         let args = [TEST_RESOURCE.to_owned()];
         let mut arg_iter = args.iter().cloned();
 
@@ -56,10 +55,8 @@ mod tests {
 
     #[test]
     fn test_non_authorized() {
-        let session = Session {
-            username : TEST_USER.to_owned(),
-            .. Session::default()
-        };
+        let session = Session::default();
+
         let args = [TEST_RESOURCE.to_owned()];
         let mut arg_iter = args.iter().cloned();
 
@@ -69,11 +66,10 @@ mod tests {
 
     #[test]
     fn test_empty_resource() {
-        let session = Session {
-            is_authorized: true,
-            username : TEST_USER.to_owned(),
-            .. Session::default()
-        };
+        let session = Session::Authorized(Authorized {
+            username: TEST_USER.to_owned(),
+            user_storage: AsyncUserStorage::default()
+        });
         let args = [];
         let mut arg_iter = args.iter().cloned();
 
@@ -83,11 +79,10 @@ mod tests {
 
     #[test]
     fn test_invalid_resource() {
-        let session = Session {
-            is_authorized: true,
-            username : TEST_USER.to_owned(),
-            .. Session::default()
-        };
+        let session = Session::Authorized(Authorized {
+            username: TEST_USER.to_owned(),
+            user_storage: AsyncUserStorage::default()
+        });
         let args = ["./../resource.com".to_owned()];
         let mut arg_iter = args.iter().cloned();
 
@@ -107,12 +102,10 @@ mod tests {
                     )
                 )
             );
-        let session = Session {
-            is_authorized: true,
+        let session = Session::Authorized(Authorized {
             username: TEST_USER.to_owned(),
-            user_storage: Some(mock_user_storage),
-            .. Session::default()
-        };
+            user_storage: mock_user_storage
+        });
         let args = [TEST_RESOURCE.to_owned()];
         let mut arg_iter = args.iter().cloned();
 
