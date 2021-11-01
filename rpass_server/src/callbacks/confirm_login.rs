@@ -37,7 +37,7 @@ pub fn confirm_login(storage: AsyncStorage, session: &mut Session,
 
     let mut storage_write = storage.write().unwrap();
     *session = Session::Authorized(Authorized {
-        username: unauthorized_session.username,
+        username: unauthorized_session.username.clone(),
         user_storage:
             storage_write.get_user_storage(&unauthorized_session.username)?,
     });

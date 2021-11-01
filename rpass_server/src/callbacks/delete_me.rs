@@ -19,8 +19,8 @@ pub fn delete_me(storage: AsyncStorage, session: &mut Session)
     let mut storage_write = storage.write().unwrap();
     if let Err(err) = storage_write.delete_user(&username) {
         *session = Session::Authorized(Authorized {
-            username,
-            user_storage: storage_write.get_user_storage(&username).unwrap()
+            user_storage: storage_write.get_user_storage(&username).unwrap(),
+            username
         });
         return Err(err.into());
     }
