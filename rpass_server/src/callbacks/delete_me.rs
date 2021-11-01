@@ -1,29 +1,32 @@
-use super::{Result, Error, AsyncStorage, Session};
+use super::{Result, Error, AsyncStorage, session::*};
 
 /// Deletes current user. Takes *username* from `session` and deletes it in
 /// `storage`
 ///
 /// # Errors
 ///
-/// * `UnacceptableRequestAtThisState` - if not `session.is_authorized`
+/// * `UnacceptableRequestAtThisState` - if session is not an Authorized
+/// variant
 /// * `Storage` - if can't delete user cause of some error in `storage`
 pub fn delete_me(storage: AsyncStorage, session: &mut Session)
         -> Result<String> {
-    if !session.is_authorized {
-        return Err(Error::UnacceptableRequestAtThisState);
-    }
+    let authorized_session = match session {
+        Session::Authorized(authorized) => authorized,
+        _ => return Err(Error::UnacceptableRequestAtThisState)
+    };
 
-    session.user_storage = None;
+    let username = authorized_session.username.clone();
+    *session = Session::Unauthorized(Unauthorized::default());
+
     let mut storage_write = storage.write().unwrap();
-    if let Err(err) = storage_write.delete_user(&session.username) {
-        session.user_storage = Some(
-            storage_write.get_user_storage(&session.username).unwrap()
-        );
+    if let Err(err) = storage_write.delete_user(&username) {
+        *session = Session::Authorized(Authorized {
+            username,
+            user_storage: storage_write.get_user_storage(&username).unwrap()
+        });
         return Err(err.into());
     }
 
-    session.is_authorized = false;
-    session.user_storage = None;
     Ok("Ok".to_owned())
 }
 
@@ -39,18 +42,17 @@ mod tests {
     #[test]
     fn test_ok() {
         let mock_storage = AsyncStorage::default();
-        let mut session = Session {
+        let mut session = Session::Authorized(Authorized {
             username: TEST_USER.to_owned(),
-            is_authorized: true,
-            .. Session::default()
-        };
+            user_storage: AsyncUserStorage::default()
+        });
 
         mock_storage.write().unwrap().expect_delete_user()
             .with(predicate::eq(TEST_USER)).returning(|_|Ok(()));
         let res = delete_me(mock_storage, &mut session);
         assert_eq!(res.unwrap(), "Ok");
-        assert!(!session.is_authorized);
-        assert!(session.user_storage.is_none());
+        assert!(matches!(session, Session::Unauthorized(_)));
+        assert!(session.as_unauthorized().unwrap().username.is_empty());
     }
 
     #[test]
@@ -65,36 +67,34 @@ mod tests {
     #[test]
     fn test_multi_session() {
         let mock_storage = AsyncStorage::default();
-        let mut session = Session {
+        let mut session = Session::Authorized(Authorized {
             username: TEST_USER.to_owned(),
-            user_storage: Some(AsyncUserStorage::default()),
-            .. Session::default()
-        };
+            user_storage: AsyncUserStorage::default()
+        });
 
         {
             let mut mock_storage_write = mock_storage.write().unwrap();
             mock_storage_write.expect_delete_user()
-            .with(predicate::eq(TEST_USER))
-            .returning(|_|
-                Err(storage::Error::UnsupportedActionForMultiSession)
-            );
+                .with(predicate::eq(TEST_USER))
+                .returning(|_|
+                    Err(storage::Error::UnsupportedActionForMultiSession)
+                );
             mock_storage_write.expect_get_user_storage()
-            .with(predicate::eq(TEST_USER))
-            .returning(|_| Ok(AsyncUserStorage::default()));
+                .with(predicate::eq(TEST_USER))
+                .returning(|_| Ok(AsyncUserStorage::default()));
         }
         assert!(delete_me(mock_storage, &mut session).is_err());
-        assert!(session.user_storage.is_some());
+        assert!(matches!(session, Session::Authorized(_)));
     }
 
     #[test]
     #[should_panic]
     fn test_double_storage_error() {
         let mock_storage = AsyncStorage::default();
-        let mut session = Session {
-            username : TEST_USER.to_owned(),
-            user_storage: Some(AsyncUserStorage::default()),
-            .. Session::default()
-        };
+        let mut session = Session::Authorized(Authorized {
+            username: TEST_USER.to_owned(),
+            user_storage: AsyncUserStorage::default()
+        });
 
         {
             let mut mock_storage_write = mock_storage.write().unwrap();
@@ -109,6 +109,6 @@ mod tests {
                 storage::Error::Io(io::Error::new(io::ErrorKind::Other, "")))
             );
         }
-        delete_me(mock_storage, &mut session).unwrap();
+        let _ = delete_me(mock_storage, &mut session);
     }
 }
