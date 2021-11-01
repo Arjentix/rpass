@@ -115,15 +115,14 @@ fn handle_client(mut stream: TcpStream,
 
     while !session.is_ended() {
         let bytes = read_request_bytes(&mut reader)?;
-        let mut request = match String::from_utf8(bytes) {
+        let request = match String::from_utf8(bytes) {
             Err(_) => {
                 stream.write_all(
                     "Error: request should be in UTF-8 format\r\n".as_bytes())?;
                 continue;
             },
-            Ok(request) => request
+            Ok(request) => request.trim().to_owned()
         };
-        request = request.trim().to_owned();
         println!("request = \"{}\"", request);
 
         let dispatcher_read = request_dispatcher.read().unwrap();
@@ -138,7 +137,6 @@ fn handle_client(mut stream: TcpStream,
         }
 
         stream.write_all(response.as_bytes())?;
-        request.clear();
     }
 
     log_connection(&stream, false);
