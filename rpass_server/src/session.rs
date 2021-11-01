@@ -31,7 +31,7 @@ impl Session {
     /// Checks if session is unauthorized
     pub fn is_unauthorized(&self) -> bool {
         match self {
-            Unauthorized => true,
+            Session::Unauthorized(_) => true,
             _ => false
         }
     }
@@ -39,7 +39,7 @@ impl Session {
     /// Checks if session is authorized
     pub fn is_authorized(&self) -> bool {
         match self {
-            Authorized => true,
+            Session::Authorized(_) => true,
             _ => false
         }
     }
@@ -47,7 +47,7 @@ impl Session {
     /// Checks if session is ended
     pub fn is_ended(&self) -> bool {
         match self {
-            Ended => true,
+            Session::Ended => true,
             _ => false
         }
     }
