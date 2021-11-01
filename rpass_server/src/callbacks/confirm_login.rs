@@ -19,10 +19,8 @@ use super::{Result, Error, AsyncStorage, session::*, ArgIter};
 /// one stored in `session`
 pub fn confirm_login(storage: AsyncStorage, session: &mut Session,
         arg_iter: ArgIter) -> Result<String> {
-    let unauthorized_session = match session {
-        Session::Unauthorized(unauthorized) => unauthorized,
-        _ => return Err(Error::UnacceptableRequestAtThisState)
-    };
+    let unauthorized_session = session.as_unauthorized()
+        .ok_or(Error::UnacceptableRequestAtThisState)?;
 
     let encrypted_confirmation = arg_iter.next()
         .ok_or(Error::EmptyConfirmationString)?;

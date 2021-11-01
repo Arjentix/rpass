@@ -13,13 +13,11 @@ use std::str::FromStr;
 /// * `EmptyRecordContent` - if record wasn't provided
 /// * `InvalidRecordFormat` - if can't parse *Record*
 /// * `Storage` - if can't create record cause of some error in `user_storage`
-/// from session
+/// from `session`
 pub fn new_record(session: &Session, arg_iter: ArgIter)
         -> Result<String> {
-    let authorized_session = match session {
-        Session::Authorized(authorized) => authorized,
-        _ => return Err(Error::UnacceptableRequestAtThisState)
-    };
+    let authorized_session = session.as_authorized()
+        .ok_or(Error::UnacceptableRequestAtThisState)?;
 
     let resource = arg_iter.next().ok_or(Error::EmptyResourceName)?;
     if !utils::is_safe_for_filename(&resource) {

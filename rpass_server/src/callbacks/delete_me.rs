@@ -10,10 +10,8 @@ use super::{Result, Error, AsyncStorage, session::*};
 /// * `Storage` - if can't delete user cause of some error in `storage`
 pub fn delete_me(storage: AsyncStorage, session: &mut Session)
         -> Result<String> {
-    let authorized_session = match session {
-        Session::Authorized(authorized) => authorized,
-        _ => return Err(Error::UnacceptableRequestAtThisState)
-    };
+    let authorized_session = session.as_authorized()
+        .ok_or(Error::UnacceptableRequestAtThisState)?;
 
     let username = authorized_session.username.clone();
     *session = Session::Unauthorized(Unauthorized::default());

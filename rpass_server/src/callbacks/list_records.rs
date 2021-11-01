@@ -11,10 +11,8 @@ use super::{Result, Error, session::*};
 /// from session
 pub fn list_records(session: &Session)
         -> Result<String> {
-    let authorized_session = match session {
-        Session::Authorized(authorized) => authorized,
-        _ => return Err(Error::UnacceptableRequestAtThisState)
-    };
+    let authorized_session = session.as_authorized()
+        .ok_or(Error::UnacceptableRequestAtThisState)?;
 
     let record_names = {
         let storage_read = authorized_session.user_storage.read().unwrap();
