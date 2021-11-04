@@ -48,6 +48,16 @@ impl UserStorage {
         fs::write(record_file, record.to_string()).map_err(|err| err.into())
     }
 
+    /// Deletes record about `resource`
+    ///
+    /// # Errors
+    ///
+    /// * Io - if some error occurred during file removing
+    pub fn delete_record(&mut self, resource: &str) -> Result<()> {
+        let record_file = self.path.join(resource);
+        fs::remove_file(record_file).map_err(|err| err.into())
+    }
+
     /// Gets record about `resource`
     ///
     /// # Errors
