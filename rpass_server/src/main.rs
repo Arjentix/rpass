@@ -84,6 +84,10 @@ fn build_request_dispatcher(storage : Arc<RwLock<Storage>>)
         })
         .add_callback(Cow::from("list_records"), move |session, _| {
             callbacks::list_records(session).map_err(|err| err.into())
+        })
+        .add_callback(Cow::from("delete_record"), move |session, arg_iter| {
+            callbacks::delete_record(session, arg_iter)
+                .map_err(|err| err.into())
         });
     }
 
