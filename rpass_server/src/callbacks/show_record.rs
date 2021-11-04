@@ -29,7 +29,6 @@ pub fn show_record(session: &Session, arg_iter: ArgIter)
 mod tests {
     use super::*;
     use super::super::{AsyncUserStorage, storage};
-    use std::sync::{Arc, RwLock};
     use std::str::FromStr;
     use mockall::predicate;
 
@@ -38,7 +37,7 @@ mod tests {
 
     #[test]
     fn test_ok() {
-        let mock_user_storage: Arc<RwLock<storage::UserStorage>> = Arc::default();
+        let mock_user_storage = AsyncUserStorage::default();
         mock_user_storage.write().unwrap().expect_get_record().times(1)
             .with(predicate::eq(TEST_RESOURCE))
             .returning(|_| Ok(storage::Record::default()));
@@ -92,7 +91,7 @@ mod tests {
 
     #[test]
     fn test_storage_error() {
-        let mock_user_storage: Arc<RwLock<storage::UserStorage>> = Arc::default();
+        let mock_user_storage = AsyncUserStorage::default();
         mock_user_storage.write().unwrap().expect_get_record().times(1)
             .with(predicate::eq(TEST_RESOURCE))
             .returning(|_|
