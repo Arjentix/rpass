@@ -2,17 +2,21 @@ pub mod storage;
 mod request_dispatcher;
 mod callbacks;
 mod session;
+mod server;
 
-use std::net::{TcpListener, TcpStream};
-use std::io::{self, BufRead, BufReader, Write, Error, ErrorKind};
+use std::io::{Error, ErrorKind};
 use std::borrow::Cow;
 use std::sync::{Arc, RwLock};
 #[mockall_double::double]
 use storage::Storage;
-use request_dispatcher::{RequestDispatcher};
+use request_dispatcher::RequestDispatcher;
 use session::Session;
+use server::Server;
 #[macro_use]
 extern crate lazy_static;
+
+pub type AsyncStorage = Arc<RwLock<Storage>>;
+pub type AsyncRequestDispatcher = Arc<RwLock<RequestDispatcher>>;
 
 fn main() -> Result<(), anyhow::Error> {
     let home_dir = dirs::home_dir().ok_or_else(
@@ -22,30 +26,15 @@ fn main() -> Result<(), anyhow::Error> {
     let storage = Arc::new(RwLock::new(Storage::new(path)?));
     let request_dispatcher = build_request_dispatcher(storage.clone());
 
-    let listener = TcpListener::bind("127.0.0.1:3747")?;
-
-    crossbeam_utils::thread::scope(|spawner| {
-        for stream_res in listener.incoming() {
-            let stream = match stream_res {
-                Ok(connection) => connection,
-                Err(_) => break
-            };
-            log_connection(&stream, true);
-
-            let request_dispatcher_clone = request_dispatcher.clone();
-            let storage_clone = storage.clone();
-            spawner.spawn(move |_| handle_client(stream, storage_clone,
-                request_dispatcher_clone));
-        }
-    }).unwrap();
+    let server = Server::new("127.0.0.1:3747", storage, request_dispatcher)?;
+    server.run();
 
     Ok(())
 }
 
 fn build_request_dispatcher(storage : Arc<RwLock<Storage>>)
-        -> Arc<RwLock<RequestDispatcher>> {
-    let request_dispatcher = Arc::new(RwLock::new(
-        RequestDispatcher::default()));
+        -> AsyncRequestDispatcher {
+    let request_dispatcher = AsyncRequestDispatcher::default();
 
     {
         let register_storage = storage.clone();
@@ -92,78 +81,4 @@ fn build_request_dispatcher(storage : Arc<RwLock<Storage>>)
     }
 
     request_dispatcher
-}
-
-/// Logs `stream` peer address to the stdout. If `connected` prints info about
-/// successful connection. Else prints info about disconnection
-fn log_connection(stream: &TcpStream, connected: bool) {
-    let addr = match stream.peer_addr() {
-        Ok(peer_addr) => Cow::from(peer_addr.to_string()),
-        Err(_) => Cow::from("unknown")
-    };
-    if connected {
-        println!("Connected with {}", addr);
-    } else {
-        println!("Connection with {} closed", addr);
-    }
-}
-
-fn handle_client(mut stream: TcpStream,
-        storage: Arc<RwLock<Storage>>,
-        request_dispatcher: Arc<RwLock<RequestDispatcher>>)
-        -> io::Result<()> {
-    let mut reader = BufReader::new(stream.try_clone()?);
-    let mut session = Session::default();
-
-    send_storage_key(&mut stream, storage)?;
-
-    while !session.is_ended() {
-        let bytes = read_request_bytes(&mut reader)?;
-        let request = match String::from_utf8(bytes) {
-            Err(_) => {
-                stream.write_all(
-                    "Error: request should be in UTF-8 format\r\n".as_bytes())?;
-                continue;
-            },
-            Ok(request) => request.trim().to_owned()
-        };
-        println!("request = \"{}\"", request);
-
-        let dispatcher_read = request_dispatcher.read().unwrap();
-        let mut response = match dispatcher_read
-                .dispatch(&mut session, &request) {
-            Ok(response) => response,
-            Err(err) => format!("Error: {}\r\n", err.to_string())
-        };
-
-        if !response.ends_with("\r\n") {
-            response += "\r\n";
-        }
-
-        stream.write_all(response.as_bytes())?;
-    }
-
-    log_connection(&stream, false);
-    Ok(())
-}
-
-/// Sends storage pub key to the stream
-fn send_storage_key(stream: &mut TcpStream, storage: Arc<RwLock<Storage>>)
-        -> io::Result<()> {
-    let storage_read = storage.read().unwrap();
-    let pub_key = storage_read.get_pub_key();
-    let message = pub_key.to_string() + "\r\n";
-    stream.write_all(message.as_bytes())
-}
-
-/// Reads bytes from `reader` until EOT byte is captured.
-/// Returns bytes without EOT byte
-fn read_request_bytes(reader: &mut BufReader<TcpStream>)
-        -> io::Result<Vec<u8>> {
-    const EOT: u8 = 0x04;
-    let mut buf = vec![];
-    reader.read_until(EOT, &mut buf)?;
-    buf.pop();
-
-    Ok(buf)
 }

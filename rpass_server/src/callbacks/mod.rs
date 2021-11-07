@@ -24,15 +24,12 @@ pub use list_records::list_records;
 pub use delete_record::delete_record;
 pub type Result<T> = std::result::Result<T, Error>;
 
-use std::sync::{Arc, RwLock};
-
-use crate::request_dispatcher::{ArgIter};
+use crate::request_dispatcher::ArgIter;
 use crate::session;
 
-#[mockall_double::double]
-use storage::Storage;
+use crate::AsyncStorage;
 
-type AsyncStorage = Arc<RwLock<Storage>>;
-
+#[cfg(test)]
+use std::sync::{Arc, RwLock};
 #[cfg(test)]
 type AsyncUserStorage = Arc<RwLock<storage::UserStorage>>;
