@@ -24,9 +24,13 @@ fn main() -> Result<(), anyhow::Error> {
     let path = home_dir.join(".rpass_storage");
 
     let storage = Arc::new(RwLock::new(Storage::new(path)?));
-    let request_dispatcher = build_request_dispatcher(storage.clone());
+    let pub_key = {
+        let storage_read = storage.read().unwrap();
+        storage_read.get_pub_key().to_string()
+    };
+    let request_dispatcher = build_request_dispatcher(storage);
 
-    let server = Server::new("127.0.0.1:3747", storage, request_dispatcher)?;
+    let server = Server::new("127.0.0.1:3747", pub_key, request_dispatcher)?;
     server.run();
 
     Ok(())
