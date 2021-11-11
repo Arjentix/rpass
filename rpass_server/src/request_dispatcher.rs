@@ -9,7 +9,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 type Callback = dyn Fn(&mut Session, ArgIter) -> Result<String> + Send + Sync;
 
-mod errors {
+mod error {
 
 use super::Cow;
 
@@ -24,7 +24,7 @@ pub enum DispatchingError {
 
 }
 
-use errors::*;
+use error::*;
 
 lazy_static! {
     static ref ARGUMENTS_REGEX: Regex
