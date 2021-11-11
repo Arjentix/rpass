@@ -58,8 +58,8 @@ fn build_request_dispatcher(storage : Arc<RwLock<Storage>>)
         })
         .add_callback(Cow::from("confirm_login"), move |session, arg_iter| {
             callbacks::confirm_login(
-                confirm_login_storage.clone(), session, arg_iter)
-                .map_err(|err| err.into())
+                confirm_login_storage.clone(), session, arg_iter
+            ).map_err(|err| err.into())
         })
         .add_callback(Cow::from("delete_me"), move |session, _| {
             callbacks::delete_me(delete_me_storage.clone(), session)
@@ -69,8 +69,7 @@ fn build_request_dispatcher(storage : Arc<RwLock<Storage>>)
             callbacks::quit(session).map_err(|err| err.into())
         })
         .add_callback(Cow::from("new_record"), move |session, arg_iter| {
-            callbacks::new_record(session, arg_iter)
-                .map_err(|err| err.into())
+            callbacks::new_record(session, arg_iter).map_err(|err| err.into())
         })
         .add_callback(Cow::from("show_record"), move |session, arg_iter| {
             callbacks::show_record(session, arg_iter).map_err(|err| err.into())
