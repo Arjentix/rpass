@@ -1,7 +1,7 @@
 pub use crate::{Error, Result};
 
 use std::net::{TcpStream, ToSocketAddrs};
-use std::io::{BufReader, BufRead};
+use std::io::{BufReader, BufRead, Write};
 use std::str::FromStr;
 use crate::key::Key;
 use enum_as_inner::EnumAsInner;
@@ -16,7 +16,7 @@ pub enum Session {
 /// Common data for Unauthorized and Authorized structs
 #[derive(Debug)]
 struct CommonData {
-    buf_stream: BufReader<TcpStream>,
+    stream: TcpStream,
     pub_key: Key,
     sec_key: Key,
     server_pub_key: Key
@@ -51,11 +51,11 @@ impl Session {
             addr: A, pub_key: Key, sec_key: Key) -> Result<Self> {
         let stream = TcpStream::connect(addr)
             .map_err(|_|Error::CantConnectToTheServer())?;
-        let mut buf_stream = BufReader::new(stream);
+        let mut buf_stream = BufReader::new(stream.try_clone()?);
         let server_pub_key = Self::read_server_pub_key(&mut buf_stream)?;
 
         let common_data = CommonData {
-            buf_stream, pub_key, sec_key, server_pub_key
+            stream, pub_key, sec_key, server_pub_key
         };
         Ok(Session::Unauthorized(Unauthorized{common_data}))
     }
@@ -70,8 +70,18 @@ impl Session {
         let key = read_response(reader)?;
         Key::from_str(&key).map_err(|err| err.into())
     }
+}
 
-    // TODO impl drop
+/// Gracefully disconnects from server
+///
+/// Implemented for CommonData to avoid same code for `Unauthorized` and
+/// `Authorized` structs
+impl Drop for CommonData {
+    fn drop(&mut self) {
+        let _ = self.stream.write_all(
+            &make_request(String::from("quit"))
+        );
+    }
 }
 
 impl Unauthorized {
@@ -105,4 +115,19 @@ fn read_response<R: BufRead>(reader: &mut R) -> Result<String> {
     }
 
     Ok(response)
+}
+
+/// Takes raw `request` string, adds *"\r\n"* at the end if needed and
+/// converts to bytes
+fn make_request(mut request: String) -> Vec<u8> {
+    if !request.ends_with("\r\n") {
+        request += "\r\n";
+    }
+
+    let mut bytes = Vec::with_capacity(request.len() + 1);
+    unsafe {
+        bytes.append(request.as_mut_vec());
+    }
+    bytes.push(EOT);
+    bytes
 }
