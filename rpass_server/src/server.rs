@@ -42,7 +42,6 @@ impl Server {
                         break;
                     }
                 };
-                log_connection(&stream, true);
 
                 spawner.spawn(|_| self.handle_client(stream));
             }
@@ -53,12 +52,30 @@ impl Server {
     ///
     /// # Errors
     ///
-    /// Any error caused by `stream` cloning, reading or writing
+    /// See [`handle_requests()`]
     fn handle_client(&self, mut stream: TcpStream) -> Result<()> {
+        let addr = match stream.peer_addr() {
+            Ok(peer_addr) => Cow::from(peer_addr.to_string()),
+            Err(_) => Cow::from("unknown")
+        };
+        log_connection(&addr, ConnectionStatus::Connected);
+
+        let res = self.handle_requests(&mut stream);
+
+        log_connection(&addr, ConnectionStatus::Disconnected);
+        res
+    }
+
+    /// Handles requests from `stream` in cycle
+    ///
+    /// # Errors
+    ///
+    /// Any error caused by `stream` cloning, reading or writing
+    fn handle_requests(&self, stream: &mut TcpStream) -> Result<()> {
         let mut reader = BufReader::new(stream.try_clone()?);
         let mut session = Session::default();
 
-        self.send_storage_key(&mut stream)?;
+        self.send_storage_key(stream)?;
 
         while !session.is_ended() {
             let bytes = Self::read_request_bytes(&mut reader)?;
@@ -77,7 +94,6 @@ impl Server {
             stream.write_all(&Self::response_to_bytes(response))?;
         }
 
-        log_connection(&stream, false);
         Ok(())
     }
 
@@ -131,16 +147,21 @@ impl Server {
     }
 }
 
-/// Logs `stream` peer address to the stdout. If `connected` prints info about
+/// Status of connection with client
+///
+/// Used to improve log_connection() usage code readability
+enum ConnectionStatus {
+    Connected,
+    Disconnected
+}
+
+/// Logs status of connection with `peer_addr` to the stdout.
+/// If `connection` is *ConnectionStatus::Connected* prints info about
 /// successful connection. Else prints info about disconnection
-fn log_connection(stream: &TcpStream, connected: bool) {
-    let addr = match stream.peer_addr() {
-        Ok(peer_addr) => Cow::from(peer_addr.to_string()),
-        Err(_) => Cow::from("unknown")
-    };
-    if connected {
-        println!("Connected with {}", addr);
-    } else {
-        println!("Connection with {} closed", addr);
+fn log_connection(peer_addr: &str, connection: ConnectionStatus) {
+    match connection {
+        ConnectionStatus::Connected => println!("Connected with {}", peer_addr),
+        ConnectionStatus::Disconnected =>
+            println!("Connection with {} closed", peer_addr)
     }
 }
