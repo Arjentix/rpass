@@ -17,6 +17,8 @@ pub struct Server {
 }
 
 impl Server {
+    /// End of transmission character
+    const EOT: u8 = 0x04;
 
     /// Creates new Server instance serving on `addr` with public key `pub-key`
     /// and `dispatcher` to handle clients
@@ -72,7 +74,7 @@ impl Server {
                     "Error: request should be in UTF-8 format\r\n".to_owned()
             };
 
-            stream.write_all(response.as_bytes())?;
+            stream.write_all(&Self::response_to_bytes(response))?;
         }
 
         log_connection(&stream, false);
@@ -110,12 +112,21 @@ impl Server {
     /// Returns bytes without EOT byte
     fn read_request_bytes(reader: &mut BufReader<TcpStream>)
             -> Result<Vec<u8>> {
-        const EOT: u8 = 0x04;
         let mut buf = vec![];
-        reader.read_until(EOT, &mut buf)?;
+        reader.read_until(Self::EOT, &mut buf)?;
         buf.pop();
 
         Ok(buf)
+    }
+
+    /// Makes
+    fn response_to_bytes(mut response: String) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(response.len() + 1);
+        unsafe {
+            bytes.append(response.as_mut_vec());
+        }
+        bytes.push(Self::EOT);
+        bytes
     }
 }
 
