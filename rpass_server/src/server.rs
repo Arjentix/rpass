@@ -88,7 +88,8 @@ impl Server {
     /// See [`TcpStream::write_all()`]
     fn send_storage_key(&self, stream: &mut TcpStream)
             -> Result<()> {
-        stream.write_all((self.pub_key.clone() + "\r\n").as_bytes())
+        let bytes = Self::response_to_bytes(self.pub_key.clone() + "\r\n");
+        stream.write_all(&bytes)
     }
 
     /// Dispatches `request` with `session` using `self.dispatcher`
@@ -119,7 +120,7 @@ impl Server {
         Ok(buf)
     }
 
-    /// Makes
+    /// Converts `response` to bytes with EOT byte at the end
     fn response_to_bytes(mut response: String) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(response.len() + 1);
         unsafe {
