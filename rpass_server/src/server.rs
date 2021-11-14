@@ -20,7 +20,7 @@ impl Server {
     /// End of transmission character
     const EOT: u8 = 0x04;
 
-    /// Creates new Server instance serving on `addr` with public key `pub-key`
+    /// Creates new Server instance serving on `addr` with public key `pub_key`
     /// and `dispatcher` to handle clients
     pub fn new<A: ToSocketAddrs>(addr: A, pub_key: String,
             dispatcher: AsyncRequestDispatcher) -> Result<Self> {
