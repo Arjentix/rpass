@@ -1,7 +1,7 @@
 pub use crate::{Error, Result};
 
 use std::net::{TcpStream, ToSocketAddrs};
-use std::io::{BufReader, BufRead, Write};
+use std::io::{self, BufReader, BufRead, Write};
 use std::str::FromStr;
 use crate::key::Key;
 use enum_as_inner::EnumAsInner;
@@ -78,9 +78,7 @@ impl Session {
 /// `Authorized` structs
 impl Drop for CommonData {
     fn drop(&mut self) {
-        let _ = self.stream.write_all(
-            &make_request(String::from("quit"))
-        );
+        let _ = send_request(&mut self.stream, String::from("quit"));
     }
 }
 
@@ -115,6 +113,10 @@ fn read_response<R: BufRead>(reader: &mut R) -> Result<String> {
     }
 
     Ok(response)
+}
+
+fn send_request<W: Write>(writer: &mut W, request: String) -> io::Result<()> {
+    writer.write_all(&make_request(request))
 }
 
 /// Takes raw `request` string, adds *"\r\n"* at the end if needed and
