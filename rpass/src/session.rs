@@ -41,6 +41,38 @@ impl CommonData {
             server_pub_key
         })
     }
+
+    /// Receives response from server
+    ///
+    /// Returns response without EOT byte and "\r\n" ending if there is some
+    ///
+    /// # Errors
+    ///
+    /// * `Io` - if can't retrieve bytes from server
+    /// * `InvalidResponse` - if response isn't UTF-8 encoded
+    pub fn recv_response(&mut self) -> Result<String> {
+        read_response(&mut self.buf_stream_reader)
+    }
+
+
+    /// Sends `request` to the server
+    ///
+    /// # Errors
+    ///
+    /// * `Io` - if can't send bytes to the server
+    pub fn send_request(&mut self, request: String) -> Result<()> {
+        write_request(&mut self.stream, request).map_err(|err| err.into())
+    }
+}
+
+/// Gracefully disconnects from server
+///
+/// Implemented for CommonData to avoid same code for `Unauthorized` and
+/// `Authorized` structs
+impl Drop for CommonData {
+    fn drop(&mut self) {
+        let _ = self.send_request(String::from("quit"));
+    }
 }
 
 #[derive(Debug)]
@@ -92,16 +124,6 @@ impl Session {
     }
 }
 
-/// Gracefully disconnects from server
-///
-/// Implemented for CommonData to avoid same code for `Unauthorized` and
-/// `Authorized` structs
-impl Drop for CommonData {
-    fn drop(&mut self) {
-        let _ = send_request(&mut self.stream, String::from("quit"));
-    }
-}
-
 impl Unauthorized {
     pub fn login(mut self, username: &str)
             -> std::result::Result<Authorized, LoginError> {
@@ -116,30 +138,21 @@ impl Unauthorized {
 
     fn try_login(&mut self, username: &str) -> Result<()> {
         let login_request = format!("login {}", username);
-        self.send_request(login_request)?;
+        self.common_data.send_request(login_request)?;
 
-        let confirmation = self.read_response()?;
+        let confirmation = self.common_data.recv_response()?;
         if confirmation.starts_with("Error") {
             return Err(Error::InvalidUsernameOrKey)
         }
 
         let encrypted_confirmation =
             self.common_data.server_pub_key.encrypt(&confirmation);
-        self.send_request(format!("confirm_login {}", encrypted_confirmation))?;
+        self.common_data.send_request(format!("confirm_login {}", encrypted_confirmation))?;
 
-        match self.read_response()?.as_ref() {
+        match self.common_data.recv_response()?.as_ref() {
             "Ok" => Ok(()),
             _ => Err(Error::InvalidUsernameOrKey)
         }
-    }
-
-    fn read_response(&mut self) -> Result<String> {
-        read_response(&mut self.common_data.buf_stream_reader)
-    }
-
-    fn send_request(&mut self, request: String) -> Result<()> {
-        send_request(&mut self.common_data.stream, request)
-            .map_err(|err| err.into())
     }
 }
 
@@ -168,7 +181,12 @@ fn read_response<R: BufRead>(reader: &mut R) -> Result<String> {
     Ok(response)
 }
 
-fn send_request<W: Write>(writer: &mut W, request: String) -> io::Result<()> {
+/// Writes `request` to `writer`
+///
+/// # Errors
+///
+/// * `Io` - if can't send bytes to `writer`
+fn write_request<W: Write>(writer: &mut W, request: String) -> io::Result<()> {
     writer.write_all(&make_request(request))
 }
 
