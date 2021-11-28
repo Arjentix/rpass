@@ -83,9 +83,9 @@ impl Unauthorized {
             return Err(Error::InvalidUsernameOrKey)
         }
 
-        let decrypted_confirmation = self.connector.sec_key.decrypt(&confirmation);
+        let decrypted_confirmation = self.connector.sec_key().decrypt(&confirmation);
         let encrypted_confirmation =
-            self.connector.server_pub_key.encrypt(&decrypted_confirmation);
+            self.connector.server_pub_key().encrypt(&decrypted_confirmation);
         self.connector.send_request(format!("confirm_login {}", encrypted_confirmation))?;
 
         match self.connector.recv_response()?.as_ref() {

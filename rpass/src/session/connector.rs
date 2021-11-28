@@ -7,11 +7,11 @@ use std::str::FromStr;
 /// Connector that interacts with *rpass_server*
 #[derive(Debug)]
 pub struct Connector {
-    pub stream: TcpStream,
-    pub buf_stream_reader: BufReader<TcpStream>,
-    pub pub_key: Key,
-    pub sec_key: Key,
-    pub server_pub_key: Key
+    stream: TcpStream,
+    buf_stream_reader: BufReader<TcpStream>,
+    pub_key: Key,
+    sec_key: Key,
+    server_pub_key: Key
 }
 
 /// End of transmission character
@@ -68,6 +68,21 @@ impl Connector {
     fn read_server_pub_key<R: BufRead>(reader: &mut R) -> Result<Key> {
         let key = read_response(reader)?;
         Key::from_str(&key).map_err(|err| err.into())
+    }
+
+    /// Get a reference to the connector's pub key.
+    pub fn pub_key(&self) -> &Key {
+        &self.pub_key
+    }
+
+    /// Get a reference to the connector's sec key.
+    pub fn sec_key(&self) -> &Key {
+        &self.sec_key
+    }
+
+    /// Get a reference to the connector's server pub key.
+    pub fn server_pub_key(&self) -> &Key {
+        &self.server_pub_key
     }
 }
 
