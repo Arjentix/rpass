@@ -162,8 +162,7 @@ fn read_response<R: BufRead>(reader: &mut R) -> Result<String> {
 
     let mut response = String::from_utf8(buf)?;
     if response.ends_with("\r\n") {
-        response.remove(response.len() - 1);
-        response.remove(response.len() - 1);
+        for _ in response.drain(response.len() - 2..) {}
     }
 
     Ok(response)
