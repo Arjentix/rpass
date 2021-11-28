@@ -1,8 +1,8 @@
-mod common_data;
+mod connector;
 
 pub use crate::{error::*, Result};
 
-use common_data::CommonData;
+use connector::Connector;
 use crate::key::Key;
 use std::net::{TcpStream, ToSocketAddrs};
 use enum_as_inner::EnumAsInner;
@@ -16,12 +16,12 @@ pub enum Session {
 
 #[derive(Debug)]
 pub struct Unauthorized {
-    common_data: CommonData
+    connector: Connector
 }
 
 #[derive(Debug)]
 pub struct Authorized {
-    common_data: CommonData
+    connector: Connector
 }
 
 impl Session {
@@ -40,8 +40,8 @@ impl Session {
             addr: A, pub_key: Key, sec_key: Key) -> Result<Self> {
         let stream = TcpStream::connect(addr)
             .map_err(|_|Error::CantConnectToTheServer())?;
-        let common_data = CommonData::new(stream, pub_key, sec_key)?;
-        Ok(Session::Unauthorized(Unauthorized{common_data}))
+        let connector = Connector::new(stream, pub_key, sec_key)?;
+        Ok(Session::Unauthorized(Unauthorized{connector}))
     }
 }
 
@@ -63,7 +63,7 @@ impl Unauthorized {
     pub fn login(mut self, username: &str)
             -> std::result::Result<Authorized, LoginError> {
         match self.try_login(username) {
-            Ok(()) => Ok(Authorized{common_data: self.common_data}),
+            Ok(()) => Ok(Authorized{connector: self.connector}),
             Err(err) => Err(LoginError {
                 source: err,
                 unauthorized: self
@@ -76,18 +76,19 @@ impl Unauthorized {
     /// See [`Unauthorized::login()`] for details
     fn try_login(&mut self, username: &str) -> Result<()> {
         let login_request = format!("login {}", username);
-        self.common_data.send_request(login_request)?;
+        self.connector.send_request(login_request)?;
 
-        let confirmation = self.common_data.recv_response()?;
+        let confirmation = self.connector.recv_response()?;
         if confirmation.starts_with("Error") {
             return Err(Error::InvalidUsernameOrKey)
         }
 
+        // TODO decrypt first
         let encrypted_confirmation =
-            self.common_data.server_pub_key.encrypt(&confirmation);
-        self.common_data.send_request(format!("confirm_login {}", encrypted_confirmation))?;
+            self.connector.server_pub_key.encrypt(&confirmation);
+        self.connector.send_request(format!("confirm_login {}", encrypted_confirmation))?;
 
-        match self.common_data.recv_response()?.as_ref() {
+        match self.connector.recv_response()?.as_ref() {
             "Ok" => Ok(()),
             _ => Err(Error::InvalidUsernameOrKey)
         }

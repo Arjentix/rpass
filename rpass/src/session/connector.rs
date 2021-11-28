@@ -4,9 +4,9 @@ use std::net::TcpStream;
 use std::io::{BufRead, BufReader, Write};
 use std::str::FromStr;
 
-/// Common data for Unauthorized and Authorized structs
+/// Connector that interacts with *rpass_server*
 #[derive(Debug)]
-pub struct CommonData {
+pub struct Connector {
     pub stream: TcpStream,
     pub buf_stream_reader: BufReader<TcpStream>,
     pub pub_key: Key,
@@ -17,8 +17,8 @@ pub struct CommonData {
 /// End of transmission character
 const EOT: u8 = 0x04;
 
-impl CommonData {
-    /// Creates new CommonData
+impl Connector {
+    /// Creates new Connector
     ///
     /// # Errors
     ///
@@ -29,24 +29,13 @@ impl CommonData {
     pub fn new(stream: TcpStream, pub_key: Key, sec_key: Key) -> Result<Self> {
         let mut buf_stream_reader = BufReader::new(stream.try_clone()?);
         let server_pub_key = Self::read_server_pub_key(&mut buf_stream_reader)?;
-        Ok(CommonData {
+        Ok(Connector {
             stream,
             buf_stream_reader,
             pub_key,
             sec_key,
             server_pub_key
         })
-    }
-
-    /// Reads server public key from `reader`
-    ///
-    /// # Errors
-    ///
-    /// * See [`read_response()`]
-    /// * `InvalidKey` - if can't parse server key
-    fn read_server_pub_key<R: BufRead>(reader: &mut R) -> Result<Key> {
-        let key = read_response(reader)?;
-        Key::from_str(&key).map_err(|err| err.into())
     }
 
     /// Receives response from server
@@ -61,7 +50,6 @@ impl CommonData {
         read_response(&mut self.buf_stream_reader)
     }
 
-
     /// Sends `request` to the server
     ///
     /// # Errors
@@ -70,13 +58,21 @@ impl CommonData {
     pub fn send_request(&mut self, request: String) -> Result<()> {
         write_request(&mut self.stream, request)
     }
+
+    /// Reads server public key from `reader`
+    ///
+    /// # Errors
+    ///
+    /// * See [`read_response()`]
+    /// * `InvalidKey` - if can't parse server key
+    fn read_server_pub_key<R: BufRead>(reader: &mut R) -> Result<Key> {
+        let key = read_response(reader)?;
+        Key::from_str(&key).map_err(|err| err.into())
+    }
 }
 
 /// Gracefully disconnects from server
-///
-/// Implemented for CommonData to avoid same code for `Unauthorized` and
-/// `Authorized` structs
-impl Drop for CommonData {
+impl Drop for Connector {
     fn drop(&mut self) {
         let _ = self.send_request(String::from("quit"));
     }
