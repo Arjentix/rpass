@@ -1,7 +1,8 @@
+use crate::error::LoginError;
 pub use crate::{Error, Result};
 
 use std::net::{TcpStream, ToSocketAddrs};
-use std::io::{self, BufReader, BufRead, Write};
+use std::io::{self, BufRead, BufReader, Write};
 use std::str::FromStr;
 use crate::key::Key;
 use enum_as_inner::EnumAsInner;
@@ -17,9 +18,29 @@ pub enum Session {
 #[derive(Debug)]
 struct CommonData {
     stream: TcpStream,
+    buf_stream_reader: BufReader<TcpStream>,
     pub_key: Key,
     sec_key: Key,
     server_pub_key: Key
+}
+
+impl CommonData {
+    /// Creates new CommonData
+    ///
+    /// # Errors
+    ///
+    /// * `Io` - if can't clone `stream`
+    pub fn new(stream: TcpStream, pub_key: Key, sec_key: Key,
+            server_pub_key: Key) -> Result<Self> {
+        let buf_stream_reader = BufReader::new(stream.try_clone()?);
+        Ok(CommonData {
+            stream,
+            buf_stream_reader,
+            pub_key,
+            sec_key,
+            server_pub_key
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -54,9 +75,8 @@ impl Session {
         let mut buf_stream = BufReader::new(stream.try_clone()?);
         let server_pub_key = Self::read_server_pub_key(&mut buf_stream)?;
 
-        let common_data = CommonData {
-            stream, pub_key, sec_key, server_pub_key
-        };
+        let common_data = CommonData::new(stream, pub_key, sec_key,
+            server_pub_key)?;
         Ok(Session::Unauthorized(Unauthorized{common_data}))
     }
 
@@ -83,9 +103,43 @@ impl Drop for CommonData {
 }
 
 impl Unauthorized {
-    pub fn login(self, _username: &str) -> Result<Authorized> {
-        // TODO impl login
-        Err(Error::Login(self))
+    pub fn login(mut self, username: &str)
+            -> std::result::Result<Authorized, LoginError> {
+        match self.try_login(username) {
+            Ok(()) => Ok(Authorized{common_data: self.common_data}),
+            Err(err) => Err(LoginError {
+                source: err,
+                unauthorized: self
+            })
+        }
+    }
+
+    fn try_login(&mut self, username: &str) -> Result<()> {
+        let login_request = format!("login {}", username);
+        self.send_request(login_request)?;
+
+        let confirmation = self.read_response()?;
+        if confirmation.starts_with("Error") {
+            return Err(Error::InvalidUsernameOrKey)
+        }
+
+        let encrypted_confirmation =
+            self.common_data.server_pub_key.encrypt(&confirmation);
+        self.send_request(format!("confirm_login {}", encrypted_confirmation))?;
+
+        match self.read_response()?.as_ref() {
+            "Ok" => Ok(()),
+            _ => Err(Error::InvalidUsernameOrKey)
+        }
+    }
+
+    fn read_response(&mut self) -> Result<String> {
+        read_response(&mut self.common_data.buf_stream_reader)
+    }
+
+    fn send_request(&mut self, request: String) -> Result<()> {
+        send_request(&mut self.common_data.stream, request)
+            .map_err(|err| err.into())
     }
 }
 
