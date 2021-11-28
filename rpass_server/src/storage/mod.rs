@@ -125,12 +125,12 @@ impl Storage {
     }
 
     /// Gets storage public key
-    pub fn get_pub_key(&self) -> &Key {
+    pub fn pub_key(&self) -> &Key {
         &self.pub_key
     }
 
     /// Gets storage secret key
-    pub fn get_sec_key(&self) -> &Key {
+    pub fn sec_key(&self) -> &Key {
         &self.sec_key
     }
 

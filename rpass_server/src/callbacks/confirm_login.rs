@@ -27,7 +27,7 @@ pub fn confirm_login(storage: AsyncStorage, session: &mut Session,
 
     let sec_key = {
         let storage_read = storage.read().unwrap();
-        storage_read.get_sec_key().clone()
+        storage_read.sec_key().clone()
     };
 
     let confirmation = sec_key.decrypt(&encrypted_confirmation);
@@ -68,7 +68,7 @@ mod tests {
 
         {
             let mut mock_storage_write = mock_storage.write().unwrap();
-            mock_storage_write.expect_get_sec_key().times(1)
+            mock_storage_write.expect_sec_key().times(1)
                 .return_const(sec_key);
             mock_storage_write.expect_get_user_storage()
                 .with(predicate::eq(TEST_USER)).times(1)
@@ -129,7 +129,7 @@ mod tests {
         let encrypted_confirmation = pub_key.encrypt("wrong_confirmation");
         let mut arg_iter = encrypted_confirmation.split_whitespace().map(str::to_owned);
 
-        mock_storage.write().unwrap().expect_get_sec_key().times(1)
+        mock_storage.write().unwrap().expect_sec_key().times(1)
             .return_const(sec_key);
         let res = confirm_login(mock_storage, &mut session, &mut arg_iter);
         assert!(matches!(res,
@@ -151,7 +151,7 @@ mod tests {
 
         {
             let mut mock_storage_write = mock_storage.write().unwrap();
-            mock_storage_write.expect_get_sec_key().times(1)
+            mock_storage_write.expect_sec_key().times(1)
                 .return_const(sec_key);
             mock_storage_write.expect_get_user_storage()
                 .with(predicate::eq(TEST_USER)).times(1)

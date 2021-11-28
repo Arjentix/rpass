@@ -33,7 +33,7 @@ impl UserStorage {
     }
 
     /// Gets user pub key
-    pub fn get_pub_key(&self) -> &Key {
+    pub fn pub_key(&self) -> &Key {
         &self.pub_key
     }
 

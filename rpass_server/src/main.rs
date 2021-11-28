@@ -26,7 +26,7 @@ fn main() -> Result<(), anyhow::Error> {
     let storage = Arc::new(RwLock::new(Storage::new(path)?));
     let pub_key = {
         let storage_read = storage.read().unwrap();
-        storage_read.get_pub_key().to_string()
+        storage_read.pub_key().to_string()
     };
     let request_dispatcher = build_request_dispatcher(storage);
 
