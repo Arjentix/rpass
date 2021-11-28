@@ -125,6 +125,20 @@ impl Session {
 }
 
 impl Unauthorized {
+    /// Attempts to log in to the server with `username` name.
+    /// Uses keys provided by [`Session::new()`] to decrypt and encrypt messages
+    ///
+    /// Consumes `self` and returns `Authorized` object on success or `self` on
+    /// failure
+    ///
+    /// # Errors
+    ///
+    /// `LoginError::source` field can have the next values:
+    ///
+    /// * `Io` - if can't write or read bytes to/from server
+    /// * `InvalidResponse` - if response isn't UTF-8 encoded
+    /// * `InvalidUsernameOrKey` - if user with name `username` does not exists
+    /// or pub(sec) key(-s) (see [`Session::new()`]) isn't (aren't) valid
     pub fn login(mut self, username: &str)
             -> std::result::Result<Authorized, LoginError> {
         match self.try_login(username) {
@@ -136,6 +150,9 @@ impl Unauthorized {
         }
     }
 
+    /// Tries to log in to the server without consuming `self`
+    ///
+    /// See [`Unauthorized::login()`] for details
     fn try_login(&mut self, username: &str) -> Result<()> {
         let login_request = format!("login {}", username);
         self.common_data.send_request(login_request)?;
