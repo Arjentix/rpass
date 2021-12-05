@@ -138,10 +138,32 @@ fn make_request(mut request: String) -> Result<Vec<u8>> {
         request += "\r\n";
     }
 
-    let mut bytes = Vec::with_capacity(request.len() + 1);
-    unsafe {
-        bytes.append(request.as_mut_vec());
-    }
+    let mut bytes = request.into_bytes();
     bytes.push(EOT);
     Ok(bytes)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_make_request_with_eot_at_the_end() {
+        let mut bytes = "login".as_bytes().to_vec();
+        bytes.push(EOT);
+        bytes.extend_from_slice("user".as_bytes());
+
+        let request = String::from_utf8(bytes).unwrap();
+        assert!(matches!(make_request(request), Err(Error::InvalidRequest{..})))
+    }
+
+
+    #[test]
+    fn test_make_request_carriage_return() {
+        let request = String::from("login user");
+        let mut expected = (request.clone() + "\r\n").into_bytes();
+        expected.push(EOT);
+
+        assert_eq!(&make_request(request).unwrap(), &expected);
+    }
 }
