@@ -14,6 +14,9 @@ pub enum Error {
     #[error("invalid response")]
     InvalidResponse(#[from] FromUtf8Error),
 
+    #[error("invalid request: {mes}")]
+    InvalidRequest{mes: String},
+
     #[error("invalid key")]
     InvalidKey(#[from] <Key as FromStr>::Err),
 

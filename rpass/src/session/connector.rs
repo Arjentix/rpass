@@ -1,4 +1,4 @@
-use crate::Result;
+use crate::{Result, Error};
 use crate::key::Key;
 use std::net::TcpStream;
 use std::io::{BufRead, BufReader, Write};
@@ -55,6 +55,7 @@ impl Connector {
     /// # Errors
     ///
     /// * `Io` - if can't send bytes to the server
+    /// * `InvalidRequest` - if `request` contains EOT byte
     pub fn send_request(&mut self, request: String) -> Result<()> {
         write_request(&mut self.stream, request)
     }
@@ -119,13 +120,20 @@ fn read_response<R: BufRead>(reader: &mut R) -> Result<String> {
 /// # Errors
 ///
 /// * `Io` - if can't send bytes to `writer`
+/// * `InvalidRequest` - if `request` contains EOT byte
 fn write_request<W: Write>(writer: &mut W, request: String) -> Result<()> {
-    writer.write_all(&make_request(request)).map_err(|err| err.into())
+    writer.write_all(&make_request(request)?).map_err(|err| err.into())
 }
 
 /// Takes raw `request` string, adds *"\r\n"* at the end if needed and
 /// converts to bytes
-fn make_request(mut request: String) -> Vec<u8> {
+fn make_request(mut request: String) -> Result<Vec<u8>> {
+    if request.bytes().any(|byte| byte == EOT) {
+        return Err(Error::InvalidRequest {
+            mes: String::from("request should not contain EOT byte")
+        });
+    }
+
     if !request.ends_with("\r\n") {
         request += "\r\n";
     }
@@ -135,5 +143,5 @@ fn make_request(mut request: String) -> Vec<u8> {
         bytes.append(request.as_mut_vec());
     }
     bytes.push(EOT);
-    bytes
+    Ok(bytes)
 }
