@@ -104,8 +104,14 @@ impl Drop for Connector {
 /// * `InvalidResponse` - if response isn't UTF-8 encoded
 fn read_response<R: BufRead>(reader: &mut R) -> Result<String> {
     let mut buf = vec![];
-    reader.read_until(EOT, &mut buf)?;
-    buf.pop();
+    let size = reader.read_until(EOT, &mut buf)?;
+    if size == 0 {
+        return Ok(String::new());
+    }
+
+    if *buf.last().unwrap() == EOT {
+        buf.pop();
+    }
 
     let mut response = String::from_utf8(buf)?;
     if response.ends_with("\r\n") {
@@ -146,6 +152,66 @@ fn make_request(mut request: String) -> Result<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::{Read, Cursor};
+
+    /// Reader that fails to read
+    struct TestReader;
+
+    impl Read for TestReader {
+        fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
+            Err(std::io::Error::new(std::io::ErrorKind::Other, "read error"))
+        }
+    }
+
+    impl BufRead for TestReader {
+        fn fill_buf(&mut self) -> std::io::Result<&[u8]> {
+            Err(std::io::Error::new(std::io::ErrorKind::Other, "fill_buf error"))
+        }
+
+        fn consume(&mut self, _amt: usize) {
+        }
+    }
+
+    #[test]
+    fn test_read_response_basic() {
+        let mut reader = Cursor::new("response");
+        assert_eq!(read_response(&mut reader).unwrap(), "response");
+    }
+
+    #[test]
+    fn test_read_response_empty() {
+        let mut reader = Cursor::new("");
+        assert_eq!(read_response(&mut reader).unwrap(), "");
+    }
+
+    #[test]
+    fn test_read_response_with_eot_at_the_end() {
+        let mut response = String::from("response").into_bytes();
+        response.push(EOT);
+
+        let mut reader = Cursor::new(response);
+        assert_eq!(read_response(&mut reader).unwrap(), "response");
+    }
+
+    #[test]
+    fn test_read_response_carriage_return() {
+        let mut reader = Cursor::new("response\r\n");
+        assert_eq!(read_response(&mut reader).unwrap(), "response");
+    }
+
+    #[test]
+    fn test_read_response_io_error() {
+        let mut reader = TestReader{};
+        assert!(matches!(read_response(&mut reader),
+            Err(Error::Io(_))));
+    }
+
+    #[test]
+    fn test_read_response_invalid_response() {
+        let mut reader = Cursor::new([0, 1, 128, EOT]);
+        assert!(matches!(read_response(&mut reader),
+            Err(Error::InvalidResponse(_))));
+    }
 
     #[test]
     fn test_make_request_with_eot_at_the_end() {
