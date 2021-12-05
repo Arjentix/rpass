@@ -20,6 +20,8 @@ const EOT: u8 = 0x04;
 impl Connector {
     /// Creates new Connector
     ///
+    /// Reads server pub key from `stream`
+    ///
     /// # Errors
     ///
     /// * `Io` - if can't clone `stream` or some error during writing/reading
@@ -163,15 +165,6 @@ mod tests {
         }
     }
 
-    impl BufRead for TestReader {
-        fn fill_buf(&mut self) -> std::io::Result<&[u8]> {
-            Err(std::io::Error::new(std::io::ErrorKind::Other, "fill_buf error"))
-        }
-
-        fn consume(&mut self, _amt: usize) {
-        }
-    }
-
     #[test]
     fn test_read_response_basic() {
         let mut reader = Cursor::new("response");
@@ -201,7 +194,7 @@ mod tests {
 
     #[test]
     fn test_read_response_io_error() {
-        let mut reader = TestReader{};
+        let mut reader = BufReader::new(TestReader{});
         assert!(matches!(read_response(&mut reader),
             Err(Error::Io(_))));
     }
