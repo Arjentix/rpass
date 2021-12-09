@@ -7,7 +7,7 @@ use std::str::FromStr;
 #[cfg(test)]
 use mockall::automock;
 
-/// Connector that interacts with *rpass_server*
+/// Connector that interacts with *rpass_db*
 #[derive(Debug)]
 pub struct Connector {
     stream: TcpStream,

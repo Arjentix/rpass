@@ -1,2 +1,2 @@
 [workspace]
-members = ["rpass", "rpass_server"]
+members = ["rpass", "rpass_db"]
