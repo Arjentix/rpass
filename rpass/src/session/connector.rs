@@ -4,6 +4,9 @@ use std::net::TcpStream;
 use std::io::{BufRead, BufReader, Write};
 use std::str::FromStr;
 
+#[cfg(test)]
+use mockall::automock;
+
 /// Connector that interacts with *rpass_server*
 #[derive(Debug)]
 pub struct Connector {
@@ -17,6 +20,7 @@ pub struct Connector {
 /// End of transmission character
 const EOT: u8 = 0x04;
 
+#[cfg_attr(test, automock, allow(dead_code))]
 impl Connector {
     /// Creates new Connector
     ///
@@ -68,7 +72,7 @@ impl Connector {
     ///
     /// * See [`read_response()`]
     /// * `InvalidKey` - if can't parse server key
-    fn read_server_pub_key<R: BufRead>(reader: &mut R) -> Result<Key> {
+    fn read_server_pub_key<R: BufRead + 'static>(reader: &mut R) -> Result<Key> {
         let key = read_response(reader)?;
         Key::from_str(&key).map_err(|err| err.into())
     }

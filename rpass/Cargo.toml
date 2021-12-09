@@ -10,3 +10,7 @@ num-bigint = "0.4"
 byteorder = "1.4.3"
 thiserror = "1.0"
 enum-as-inner = "0.3.3"
+mockall_double = "0.2.0"
+
+[dev-dependencies]
+mockall = "0.10.2"

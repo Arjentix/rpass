@@ -2,6 +2,7 @@ mod connector;
 
 pub use crate::{error::*, Result};
 
+#[mockall_double::double]
 use connector::Connector;
 use crate::key::Key;
 use std::net::{TcpStream, ToSocketAddrs};
@@ -87,8 +88,10 @@ impl Unauthorized {
             self.connector.sec_key().decrypt(&confirmation);
         let encrypted_confirmation =
             self.connector.server_pub_key().encrypt(&decrypted_confirmation);
-        self.connector.send_request(
-            format!("confirm_login {}", encrypted_confirmation))?;
+
+        let confirm_login_request =
+            format!("confirm_login {}", encrypted_confirmation);
+        self.connector.send_request(confirm_login_request)?;
 
         match self.connector.recv_response()?.as_ref() {
             "Ok" => Ok(()),
@@ -99,4 +102,69 @@ impl Unauthorized {
 
 impl Authorized {
     // TODO impl authorized functions
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::cell::Cell;
+
+    use mockall::predicate::*;
+    use num_bigint::ToBigUint;
+
+    const TEST_USER: &str = "test_user";
+    const CONFIRMATION: &str = "confirmation";
+
+    #[test]
+    fn test_login_ok() {
+        let server_pub_key = Key(11.to_biguint().unwrap(),
+            22.to_biguint().unwrap());
+
+        // TODO Change next keys initialization to Key::generate_pair() when it
+        // will be possible to pass generator
+        let pub_key = Key(269.to_biguint().unwrap(), 221.to_biguint().unwrap());
+        let sec_key = Key(5.to_biguint().unwrap(), 221.to_biguint().unwrap());
+
+        let decrypted_confirmation = server_pub_key.decrypt(CONFIRMATION);
+        let encrypted_confirmation = sec_key.encrypt(&decrypted_confirmation);
+
+        let send_response_call_counter = Cell::new(0u8);
+        let mut recv_response_call_counter = 0u8;
+        let send_request_arg_validator = function(
+            move |val: &String| {
+                if send_response_call_counter.get() == 0 {
+                    let counter = send_response_call_counter.get();
+                    send_response_call_counter.set(counter + 1);
+                    return val == &format!("login {}", TEST_USER);
+                }
+                val == &format!("confirm_login {}", encrypted_confirmation)
+            }
+        );
+
+        let mut connector = Connector::default();
+        connector.expect_send_request()
+            .with(send_request_arg_validator)
+            .times(2)
+            .returning(|_| Ok(()));
+        connector.expect_recv_response()
+            .times(2)
+            .returning(move || {
+                if recv_response_call_counter == 0 {
+                    recv_response_call_counter += 1;
+                    return Ok(pub_key.encrypt(CONFIRMATION));
+                }
+                Ok(String::from("Ok"))
+            });
+        connector.expect_sec_key()
+            .times(1)
+            .return_const(sec_key);
+        connector.expect_server_pub_key()
+            .times(1)
+            .return_const(server_pub_key);
+
+        let session = Session::Unauthorized(Unauthorized {connector});
+        let unauthorized = session.into_unauthorized().unwrap();
+        unauthorized.login(TEST_USER).unwrap();
+    }
 }
