@@ -1,4 +1,4 @@
-use super::{Result, Error, AsyncStorage, session::*, ArgIter};
+use super::{Result, Error, AsyncStorage, session::*, ArgIter, utils};
 use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
 
@@ -20,6 +20,9 @@ use rand::distributions::Alphanumeric;
 pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
         -> Result<String> {
     let username = arg_iter.next().ok_or(Error::EmptyUsername)?;
+    if !utils::is_safe_for_filename(&username) {
+        return Err(Error::InvalidUsername(username));
+    }
 
     let user_pub_key = {
         let storage_read = storage.read().unwrap();
@@ -74,6 +77,17 @@ mod tests {
 
         let res = login(mock_storage, &mut session, &mut arg_iter);
         assert!(matches!(res, Err(Error::EmptyUsername)));
+    }
+
+    #[test]
+    fn test_invalid_username() {
+        let mock_storage = AsyncStorage::default();
+        let mut session = Session::default();
+        let invalid_username = String::from("/etc/passwd");
+        let mut arg_iter = [invalid_username].into_iter();
+
+        let res = login(mock_storage, &mut session, &mut arg_iter);
+        assert!(matches!(res, Err(Error::InvalidUsername(_))));
     }
 
     #[test]
