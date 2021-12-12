@@ -36,5 +36,5 @@ pub enum Error {
     InvalidRecordFormat(#[from] storage::ParseRecordError),
 
     #[error("storage error: {0}")]
-    Storage(#[from] storage::Error)
+    Storage(#[from] storage::Error),
 }

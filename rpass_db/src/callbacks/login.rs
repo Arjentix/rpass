@@ -1,6 +1,6 @@
-use super::{Result, Error, AsyncStorage, session::*, ArgIter, utils};
-use rand::{thread_rng, Rng};
+use super::{session::*, utils, ArgIter, AsyncStorage, Error, Result};
 use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
 
 /// First part of user logging. Reads username from `arg_iter`, gets his key
 /// from `storage`, initializes `session` with Unauthorized variant and writes
@@ -17,8 +17,7 @@ use rand::distributions::Alphanumeric;
 /// * `EmptyUsername` - if no username was provided
 /// * `Storage` - if can't create record cause of some error in
 /// `storage`
-pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
-        -> Result<String> {
+pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter) -> Result<String> {
     let username = arg_iter.next().ok_or(Error::EmptyUsername)?;
     if !utils::is_safe_for_filename(&username) {
         return Err(Error::InvalidUsername(username));
@@ -39,7 +38,7 @@ pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
     let login_confirmation = user_pub_key.encrypt(&rand_string);
     *session = Session::Unauthorized(Unauthorized {
         username,
-        login_confirmation: login_confirmation.clone()
+        login_confirmation: login_confirmation.clone(),
     });
     Ok(login_confirmation)
 }
@@ -48,8 +47,8 @@ pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter)
 mod tests {
     use super::{super::storage, *};
     use crate::storage::Key;
-    use std::str::FromStr;
     use mockall::predicate;
+    use std::str::FromStr;
 
     const TEST_USER: &str = "test_user";
 
@@ -59,7 +58,11 @@ mod tests {
         let mut session = Session::default();
         let mut arg_iter = [TEST_USER].iter().map(|&s| s.to_owned());
 
-        mock_storage.write().unwrap().expect_get_user_pub_key().times(1)
+        mock_storage
+            .write()
+            .unwrap()
+            .expect_get_user_pub_key()
+            .times(1)
             .with(predicate::eq(TEST_USER))
             .returning(|_| Ok(Key::from_str("11:11").unwrap()));
 
@@ -96,11 +99,13 @@ mod tests {
         let mut session = Session::default();
         let mut arg_iter = [TEST_USER].iter().map(|&s| s.to_owned());
 
-        mock_storage.write().unwrap().expect_get_user_pub_key().times(1)
+        mock_storage
+            .write()
+            .unwrap()
+            .expect_get_user_pub_key()
+            .times(1)
             .with(predicate::eq(TEST_USER))
-            .returning(|_| Err(
-                storage::Error::UserDoesNotExist(TEST_USER.to_owned())
-            ));
+            .returning(|_| Err(storage::Error::UserDoesNotExist(TEST_USER.to_owned())));
         let res = login(mock_storage, &mut session, &mut arg_iter);
         assert!(matches!(res, Err(Error::Storage(_))));
     }

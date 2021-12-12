@@ -1,12 +1,12 @@
-pub use num_bigint::{BigUint, ToBigUint, ParseBigIntError};
+pub use num_bigint::{BigUint, ParseBigIntError, ToBigUint};
 
-use std::io::{Result, Read, Write};
-use std::str::FromStr;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use std::io::{Read, Result, Write};
+use std::str::FromStr;
 
 /// RSA-Key
 #[derive(PartialEq, Eq, Debug, Clone)]
-pub struct Key (pub BigUint, pub BigUint);
+pub struct Key(pub BigUint, pub BigUint);
 
 impl Key {
     /// Returns byte representation of key
@@ -24,15 +24,20 @@ impl Key {
 
     /// Constructs new key from bytes
     pub fn from_bytes(mut bytes: &[u8]) -> Result<Self> {
-        Ok(Key(Self::read_part(&mut bytes)?, Self::read_part(&mut bytes)?))
+        Ok(Key(
+            Self::read_part(&mut bytes)?,
+            Self::read_part(&mut bytes)?,
+        ))
     }
 
     /// Generate pair of public and secret keys
     ///
     /// TODO
     pub fn generate_pair() -> (Self, Self) {
-        (Key(269.to_biguint().unwrap(), 221.to_biguint().unwrap()),
-         Key(5.to_biguint().unwrap(), 221.to_biguint().unwrap()))
+        (
+            Key(269.to_biguint().unwrap(), 221.to_biguint().unwrap()),
+            Key(5.to_biguint().unwrap(), 221.to_biguint().unwrap()),
+        )
     }
 
     /// Encrypt `s` with key
@@ -56,7 +61,9 @@ impl Key {
     /// Panics if can't write to the buffer
     fn write_part(part: &BigUint, write: &mut dyn Write) {
         let part_bytes = part.to_bytes_le();
-        write.write_u64::<LittleEndian>(part_bytes.len() as u64).unwrap();
+        write
+            .write_u64::<LittleEndian>(part_bytes.len() as u64)
+            .unwrap();
         write.write_all(&part_bytes).unwrap();
     }
 
@@ -74,7 +81,7 @@ pub enum ParseKeyError {
     #[error("invalid key format")]
     InvalidKeyFormat,
     #[error("Error parsing big int: {0}")]
-    ParseBigIntError(#[from] ParseBigIntError)
+    ParseBigIntError(#[from] ParseBigIntError),
 }
 
 impl FromStr for Key {
@@ -93,13 +100,14 @@ impl FromStr for Key {
     /// assert_eq!(key.1, 19634u64.to_biguint().unwrap());
     /// ```
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        let (pub_part, sec_part) = s.split_once(":")
-            .ok_or(ParseKeyError::InvalidKeyFormat)?;
+        let (pub_part, sec_part) = s.split_once(":").ok_or(ParseKeyError::InvalidKeyFormat)?;
         if pub_part.is_empty() || sec_part.is_empty() {
             return Err(ParseKeyError::InvalidKeyFormat);
         }
-        Ok(Key(BigUint::from_str(pub_part)?,
-            BigUint::from_str(sec_part)?))
+        Ok(Key(
+            BigUint::from_str(pub_part)?,
+            BigUint::from_str(sec_part)?,
+        ))
     }
 }
 
@@ -117,7 +125,6 @@ impl ToString for Key {
     fn to_string(&self) -> String {
         self.0.to_string() + ":" + &self.1.to_string()
     }
-
 }
 
 #[cfg(test)]
@@ -132,9 +139,13 @@ mod tests {
         let big_n = n.to_biguint().unwrap();
 
         let mut bytes = vec![];
-        bytes.write_u64::<LittleEndian>(bytes_per_bits(big_e.bits())).unwrap();
+        bytes
+            .write_u64::<LittleEndian>(bytes_per_bits(big_e.bits()))
+            .unwrap();
         bytes.write_u16::<LittleEndian>(e as u16).unwrap();
-        bytes.write_u64::<LittleEndian>(bytes_per_bits(big_n.bits())).unwrap();
+        bytes
+            .write_u64::<LittleEndian>(bytes_per_bits(big_n.bits()))
+            .unwrap();
         bytes.write_u16::<LittleEndian>(n as u16).unwrap();
 
         let key = Key(big_e, big_n);
@@ -150,9 +161,13 @@ mod tests {
         let big_e = e.to_biguint().unwrap();
         let big_n = n.to_biguint().unwrap();
 
-        bytes.write_u64::<LittleEndian>(bytes_per_bits(big_e.bits())).unwrap();
+        bytes
+            .write_u64::<LittleEndian>(bytes_per_bits(big_e.bits()))
+            .unwrap();
         bytes.write_u16::<LittleEndian>(e as u16).unwrap();
-        bytes.write_u64::<LittleEndian>(bytes_per_bits(big_n.bits())).unwrap();
+        bytes
+            .write_u64::<LittleEndian>(bytes_per_bits(big_n.bits()))
+            .unwrap();
         bytes.write_u16::<LittleEndian>(n as u16).unwrap();
 
         let key = Key::from_bytes(&bytes).unwrap();
@@ -171,26 +186,33 @@ mod tests {
 
     #[test]
     fn test_from_invalid_format() {
-        assert!(matches!(Key::from_str("156"),
-            Err(ParseKeyError::InvalidKeyFormat)));
-        assert!(matches!(Key::from_str("19704:"),
-            Err(ParseKeyError::InvalidKeyFormat)));
-        assert!(matches!(Key::from_str(":9758"),
-            Err(ParseKeyError::InvalidKeyFormat)));
+        assert!(matches!(
+            Key::from_str("156"),
+            Err(ParseKeyError::InvalidKeyFormat)
+        ));
+        assert!(matches!(
+            Key::from_str("19704:"),
+            Err(ParseKeyError::InvalidKeyFormat)
+        ));
+        assert!(matches!(
+            Key::from_str(":9758"),
+            Err(ParseKeyError::InvalidKeyFormat)
+        ));
     }
 
     #[test]
     fn test_from_str_not_a_number() {
-        assert!(matches!(Key::from_str("public:key"),
-            Err(ParseKeyError::ParseBigIntError(_))));
+        assert!(matches!(
+            Key::from_str("public:key"),
+            Err(ParseKeyError::ParseBigIntError(_))
+        ));
     }
 
     /// Computes number of bytes needful to represent `bits` number of bits
     fn bytes_per_bits(bits: u64) -> u64 {
         match bits % 8 {
             0 => bits / 8,
-            _ => bits / 8 + 1
+            _ => bits / 8 + 1,
         }
     }
-
 }

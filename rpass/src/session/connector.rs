@@ -1,7 +1,7 @@
-use crate::{Result, Error};
 use crate::key::Key;
-use std::net::TcpStream;
+use crate::{Error, Result};
 use std::io::{BufRead, BufReader, Write};
+use std::net::TcpStream;
 use std::str::FromStr;
 
 #[cfg(test)]
@@ -14,7 +14,7 @@ pub struct Connector {
     buf_stream_reader: BufReader<TcpStream>,
     pub_key: Key,
     sec_key: Key,
-    server_pub_key: Key
+    server_pub_key: Key,
 }
 
 /// End of transmission character
@@ -40,7 +40,7 @@ impl Connector {
             buf_stream_reader,
             pub_key,
             sec_key,
-            server_pub_key
+            server_pub_key,
         })
     }
 
@@ -134,7 +134,9 @@ fn read_response<R: BufRead>(reader: &mut R) -> Result<String> {
 /// * `Io` - if can't send bytes to `writer`
 /// * `InvalidRequest` - if `request` contains EOT byte
 fn write_request<W: Write>(writer: &mut W, request: String) -> Result<()> {
-    writer.write_all(&make_request(request)?).map_err(|err| err.into())
+    writer
+        .write_all(&make_request(request)?)
+        .map_err(|err| err.into())
 }
 
 /// Takes raw `request` string, adds *"\r\n"* at the end if needed and
@@ -142,7 +144,7 @@ fn write_request<W: Write>(writer: &mut W, request: String) -> Result<()> {
 fn make_request(mut request: String) -> Result<Vec<u8>> {
     if request.bytes().any(|byte| byte == EOT) {
         return Err(Error::InvalidRequest {
-            mes: String::from("request should not contain EOT byte")
+            mes: String::from("request should not contain EOT byte"),
         });
     }
 
@@ -158,7 +160,7 @@ fn make_request(mut request: String) -> Result<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::{Read, Cursor};
+    use std::io::{Cursor, Read};
 
     /// Reader that fails to read
     struct TestReader;
@@ -198,16 +200,17 @@ mod tests {
 
     #[test]
     fn test_read_response_io_error() {
-        let mut reader = BufReader::new(TestReader{});
-        assert!(matches!(read_response(&mut reader),
-            Err(Error::Io(_))));
+        let mut reader = BufReader::new(TestReader {});
+        assert!(matches!(read_response(&mut reader), Err(Error::Io(_))));
     }
 
     #[test]
     fn test_read_response_invalid_response() {
         let mut reader = Cursor::new([0, 1, 128, EOT]);
-        assert!(matches!(read_response(&mut reader),
-            Err(Error::InvalidResponse(_))));
+        assert!(matches!(
+            read_response(&mut reader),
+            Err(Error::InvalidResponse(_))
+        ));
     }
 
     #[test]
@@ -217,9 +220,11 @@ mod tests {
         bytes.extend_from_slice("user".as_bytes());
 
         let request = String::from_utf8(bytes).unwrap();
-        assert!(matches!(make_request(request), Err(Error::InvalidRequest{..})))
+        assert!(matches!(
+            make_request(request),
+            Err(Error::InvalidRequest { .. })
+        ))
     }
-
 
     #[test]
     fn test_make_request_carriage_return() {

@@ -1,6 +1,6 @@
 use std::borrow::Cow;
-use std::net::{TcpListener, TcpStream, ToSocketAddrs};
 use std::io::{self, BufRead, BufReader, Write};
+use std::net::{TcpListener, TcpStream, ToSocketAddrs};
 
 pub type Result<T> = io::Result<T>;
 
@@ -13,7 +13,7 @@ use crate::Session;
 pub struct Server {
     listener: TcpListener,
     pub_key: String,
-    dispatcher: AsyncRequestDispatcher
+    dispatcher: AsyncRequestDispatcher,
 }
 
 impl Server {
@@ -22,12 +22,15 @@ impl Server {
 
     /// Creates new Server instance serving on `addr` with public key `pub_key`
     /// and `dispatcher` to handle clients
-    pub fn new<A: ToSocketAddrs>(addr: A, pub_key: String,
-            dispatcher: AsyncRequestDispatcher) -> Result<Self> {
+    pub fn new<A: ToSocketAddrs>(
+        addr: A,
+        pub_key: String,
+        dispatcher: AsyncRequestDispatcher,
+    ) -> Result<Self> {
         Ok(Server {
             listener: TcpListener::bind(addr)?,
             pub_key,
-            dispatcher
+            dispatcher,
         })
     }
 
@@ -45,7 +48,8 @@ impl Server {
 
                 spawner.spawn(|_| self.handle_client(stream));
             }
-        }).unwrap()
+        })
+        .unwrap()
     }
 
     /// Handles client `stream`
@@ -56,7 +60,7 @@ impl Server {
     fn handle_client(&self, mut stream: TcpStream) -> Result<()> {
         let addr = match stream.peer_addr() {
             Ok(peer_addr) => Cow::from(peer_addr.to_string()),
-            Err(_) => Cow::from("unknown")
+            Err(_) => Cow::from("unknown"),
         };
         log_connection(&addr, ConnectionStatus::Connected);
 
@@ -86,9 +90,8 @@ impl Server {
                     let request_str = request.trim();
                     println!("request = \"{}\"", request_str);
                     self.dispatch_request(&mut session, request_str)
-                },
-                Err(_) =>
-                    "Error: request should be in UTF-8 format\r\n".to_owned()
+                }
+                Err(_) => "Error: request should be in UTF-8 format\r\n".to_owned(),
             };
 
             stream.write_all(&Self::response_to_bytes(response))?;
@@ -102,8 +105,7 @@ impl Server {
     /// # Errors
     ///
     /// See [`TcpStream::write_all()`]
-    fn send_storage_key(&self, stream: &mut TcpStream)
-            -> Result<()> {
+    fn send_storage_key(&self, stream: &mut TcpStream) -> Result<()> {
         let bytes = Self::response_to_bytes(self.pub_key.clone() + "\r\n");
         stream.write_all(&bytes)
     }
@@ -113,10 +115,9 @@ impl Server {
     /// Returns response with "\r\n" at the end
     fn dispatch_request(&self, session: &mut Session, request: &str) -> String {
         let dispatcher_read = self.dispatcher.read().unwrap();
-        let mut response = match dispatcher_read
-                .dispatch(session, request) {
+        let mut response = match dispatcher_read.dispatch(session, request) {
             Ok(response) => response,
-            Err(err) => format!("Error: {}\r\n", err.to_string())
+            Err(err) => format!("Error: {}\r\n", err.to_string()),
         };
 
         if !response.ends_with("\r\n") {
@@ -127,8 +128,7 @@ impl Server {
 
     /// Reads bytes from `reader` until EOT byte is captured.
     /// Returns bytes without EOT byte
-    fn read_request_bytes(reader: &mut BufReader<TcpStream>)
-            -> Result<Vec<u8>> {
+    fn read_request_bytes(reader: &mut BufReader<TcpStream>) -> Result<Vec<u8>> {
         let mut buf = vec![];
         reader.read_until(Self::EOT, &mut buf)?;
         buf.pop();
@@ -152,7 +152,7 @@ impl Server {
 /// Used to improve log_connection() usage code readability
 enum ConnectionStatus {
     Connected,
-    Disconnected
+    Disconnected,
 }
 
 /// Logs status of connection with `peer_addr` to the stdout.
@@ -161,7 +161,6 @@ enum ConnectionStatus {
 fn log_connection(peer_addr: &str, connection: ConnectionStatus) {
     match connection {
         ConnectionStatus::Connected => println!("Connected with {}", peer_addr),
-        ConnectionStatus::Disconnected =>
-            println!("Connection with {} closed", peer_addr)
+        ConnectionStatus::Disconnected => println!("Connection with {} closed", peer_addr),
     }
 }

@@ -1,4 +1,4 @@
-use super::{Result, Error, session::*};
+use super::{session::*, Error, Result};
 
 /// Ends user's session.
 ///
@@ -33,7 +33,9 @@ mod tests {
     fn test_already_ended() {
         let mut session = Session::Ended;
 
-        assert!(matches!(quit(&mut session),
-            Err(Error::UnacceptableRequestAtThisState)));
+        assert!(matches!(
+            quit(&mut session),
+            Err(Error::UnacceptableRequestAtThisState)
+        ));
     }
 }

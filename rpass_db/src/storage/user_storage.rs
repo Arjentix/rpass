@@ -1,8 +1,8 @@
-use super::{Error, Result, Key, Record};
+use super::{Error, Key, Record, Result};
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::string::ToString;
-use std::fs;
 
 #[cfg(test)]
 use mockall::automock;
@@ -10,7 +10,7 @@ use mockall::automock;
 /// Password storage of concrete user
 pub struct UserStorage {
     path: PathBuf,
-    pub_key: Key
+    pub_key: Key,
 }
 
 #[cfg_attr(test, automock, allow(dead_code))]
@@ -24,12 +24,14 @@ impl UserStorage {
     pub(super) fn new<P: 'static + AsRef<Path>>(path: P) -> Result<Self> {
         let real_path = path.as_ref();
         if !real_path.exists() || !real_path.is_dir() {
-            return Err(Error::UserDoesNotExist(
-                real_path.display().to_string()));
+            return Err(Error::UserDoesNotExist(real_path.display().to_string()));
         }
 
         let pub_key = Key::from_bytes(&fs::read(real_path.join("key.pub"))?)?;
-        Ok(UserStorage{path: real_path.to_path_buf(), pub_key})
+        Ok(UserStorage {
+            path: real_path.to_path_buf(),
+            pub_key,
+        })
     }
 
     /// Gets user pub key
@@ -42,8 +44,7 @@ impl UserStorage {
     /// # Errors
     ///
     /// * Io - if some error occurred during record writing
-    pub fn write_record(&mut self, record: &Record)
-            -> Result<()> {
+    pub fn write_record(&mut self, record: &Record) -> Result<()> {
         let record_file = self.path.join(&record.resource);
         fs::write(record_file, record.to_string()).map_err(|err| err.into())
     }
@@ -69,7 +70,7 @@ impl UserStorage {
         let record_str = fs::read_to_string(record_file)?;
         Ok(Record {
             resource: resource.to_owned(),
-            .. Record::from_str(&record_str)?
+            ..Record::from_str(&record_str)?
         })
     }
 
@@ -88,9 +89,10 @@ impl UserStorage {
             }
 
             match file.file_name() {
-                Some(filename) if filename != "key.pub" =>
-                    records_names.push(filename.to_string_lossy().into_owned()),
-                _ => ()
+                Some(filename) if filename != "key.pub" => {
+                    records_names.push(filename.to_string_lossy().into_owned())
+                }
+                _ => (),
             }
         }
         records_names.sort();

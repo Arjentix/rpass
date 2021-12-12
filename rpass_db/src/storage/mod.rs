@@ -10,10 +10,10 @@ pub use user_storage::UserStorage;
 
 pub use rpass::key::*;
 
-use std::path::{Path, PathBuf};
-use std::fs;
-use std::sync::{Weak, Arc, RwLock};
 use std::collections::HashMap;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, RwLock, Weak};
 
 #[cfg(test)]
 use mockall::automock;
@@ -29,7 +29,7 @@ pub struct Storage {
     path: PathBuf,
     pub_key: Key,
     sec_key: Key,
-    username_to_user_storage: HashMap<String, WeakUserStorage>
+    username_to_user_storage: HashMap<String, WeakUserStorage>,
 }
 
 #[cfg_attr(test, automock, allow(dead_code))]
@@ -49,7 +49,7 @@ impl Storage {
             path: real_path.to_path_buf(),
             pub_key,
             sec_key,
-            username_to_user_storage: HashMap::new()
+            username_to_user_storage: HashMap::new(),
         })
     }
 
@@ -61,12 +61,10 @@ impl Storage {
     /// # Errors
     ///
     /// Any errors during creating folder and writing file
-    pub fn add_new_user(&mut self, username: &str, pub_key: &Key)
-            -> Result<()> {
+    pub fn add_new_user(&mut self, username: &str, pub_key: &Key) -> Result<()> {
         let user_dir = self.path.join(username);
         let pub_key_file = user_dir.join(PUB_KEY_FILENAME);
-        fs::create_dir(user_dir)
-            .map_err(|_| Error::UserAlreadyExists(username.to_owned()))?;
+        fs::create_dir(user_dir).map_err(|_| Error::UserAlreadyExists(username.to_owned()))?;
         fs::write(pub_key_file, pub_key.as_bytes()).map_err(|err| err.into())
     }
 
@@ -94,8 +92,7 @@ impl Storage {
     /// # Errors
     ///
     /// See [`UserStorage::new()`]
-    pub fn get_user_storage(&mut self, username: &str)
-            -> Result<Arc<RwLock<UserStorage>>> {
+    pub fn get_user_storage(&mut self, username: &str) -> Result<Arc<RwLock<UserStorage>>> {
         if let Some(weak) = self.username_to_user_storage.get(username) {
             if weak.strong_count() > 0 {
                 return Ok(weak.upgrade().unwrap());
@@ -103,10 +100,9 @@ impl Storage {
         };
 
         let user_dir_path = self.path.join(username);
-        let user_storage = Arc::new(RwLock::new(
-            UserStorage::new(user_dir_path)?));
-        self.username_to_user_storage.insert(username.to_owned(),
-            Arc::downgrade(&user_storage));
+        let user_storage = Arc::new(RwLock::new(UserStorage::new(user_dir_path)?));
+        self.username_to_user_storage
+            .insert(username.to_owned(), Arc::downgrade(&user_storage));
 
         Ok(user_storage)
     }
@@ -143,14 +139,14 @@ impl Storage {
         const DIRECTORY_MESSAGE_PREFIX: &str = "Rpass storage directory";
 
         if !path.exists() {
-            println!("{} {:?} does not exist. Creating...",
-                DIRECTORY_MESSAGE_PREFIX, path);
+            println!(
+                "{} {:?} does not exist. Creating...",
+                DIRECTORY_MESSAGE_PREFIX, path
+            );
             fs::create_dir(path)?;
             return Self::init_keys(path);
         } else if !path.is_dir() {
-            return Err(
-                Error::StoragePathIsNotADirectory(path.to_owned())
-            );
+            return Err(Error::StoragePathIsNotADirectory(path.to_owned()));
         }
 
         println!("{} is {:?}", DIRECTORY_MESSAGE_PREFIX, path);

@@ -22,5 +22,5 @@ pub enum Error {
     CantParseRecord(#[from] <Record as FromStr>::Err),
 
     #[error("can't perform action cause of others active sessions")]
-    UnsupportedActionForMultiSession
+    UnsupportedActionForMultiSession,
 }

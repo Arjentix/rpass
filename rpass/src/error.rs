@@ -1,5 +1,4 @@
-
-use crate::{session::Unauthorized, key::Key};
+use crate::{key::Key, session::Unauthorized};
 use std::str::FromStr;
 use std::string::FromUtf8Error;
 
@@ -15,18 +14,18 @@ pub enum Error {
     InvalidResponse(#[from] FromUtf8Error),
 
     #[error("invalid request: {mes}")]
-    InvalidRequest{mes: String},
+    InvalidRequest { mes: String },
 
     #[error("invalid key")]
     InvalidKey(#[from] <Key as FromStr>::Err),
 
     #[error("invalid username or key")]
-    InvalidUsernameOrKey
+    InvalidUsernameOrKey,
 }
 
 #[derive(thiserror::Error, Debug)]
 #[error("{source}")]
 pub struct LoginError {
     pub source: Error,
-    pub unauthorized: Unauthorized
+    pub unauthorized: Unauthorized,
 }

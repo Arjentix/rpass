@@ -8,17 +8,21 @@
 /// * Doesn't end with `.`, `@` or `_`
 /// * No more than 32 characters in length
 pub fn is_safe_for_filename(name: &str) -> bool {
-    if name.is_empty() ||
-        !name.chars().all(
-            |c| char::is_ascii_alphanumeric(&c) || c == '.' || c == '@' ||
-            c == '_') ||
-        !name.chars().any(|c| char::is_ascii_alphabetic(&c)) ||
-        is_contains_two_dots(name) ||
-        name.starts_with('.') || name.starts_with('@') ||
-        name.starts_with('_') || name.ends_with('.') ||
-        name.ends_with('@') || name.ends_with('_') ||
-        name.len() > 32 {
-            return false;
+    if name.is_empty()
+        || !name
+            .chars()
+            .all(|c| char::is_ascii_alphanumeric(&c) || c == '.' || c == '@' || c == '_')
+        || !name.chars().any(|c| char::is_ascii_alphabetic(&c))
+        || is_contains_two_dots(name)
+        || name.starts_with('.')
+        || name.starts_with('@')
+        || name.starts_with('_')
+        || name.ends_with('.')
+        || name.ends_with('@')
+        || name.ends_with('_')
+        || name.len() > 32
+    {
+        return false;
     }
 
     true
@@ -47,7 +51,8 @@ mod tests {
         assert!(!is_safe_for_filename("_user"));
         assert!(!is_safe_for_filename("user_"));
         assert!(!is_safe_for_filename(
-            &String::from_utf8(vec![b'X'; 33]).unwrap()));
+            &String::from_utf8(vec![b'X'; 33]).unwrap()
+        ));
 
         assert!(is_safe_for_filename("user_404@example.com"));
     }

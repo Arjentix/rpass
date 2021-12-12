@@ -1,4 +1,4 @@
-use super::{Result, Error, session::*};
+use super::{session::*, Error, Result};
 
 /// Lists all records names for user stored in `session`.
 /// Names will be delimited by a new line character
@@ -9,9 +9,9 @@ use super::{Result, Error, session::*};
 /// variant
 /// * `Storage` - if can't list records cause of some error in `user_storage`
 /// from session
-pub fn list_records(session: &Session)
-        -> Result<String> {
-    let authorized_session = session.as_authorized()
+pub fn list_records(session: &Session) -> Result<String> {
+    let authorized_session = session
+        .as_authorized()
         .ok_or(Error::UnacceptableRequestAtThisState)?;
 
     let record_names = {
@@ -25,26 +25,32 @@ pub fn list_records(session: &Session)
 /// Catenates strings from `values` delimiting them with `delimiter`
 fn to_string_with_delimiter(values: &[String], delimiter: &str) -> String {
     match !values.is_empty() {
-        true => values.iter().skip(1)
+        true => values
+            .iter()
+            .skip(1)
             .fold(values[0].clone(), |acc, s| acc + delimiter + s),
-        false => String::default()
+        false => String::default(),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::{storage, AsyncUserStorage};
+    use super::*;
     use std::io;
 
     #[test]
     fn test_ok() {
         let mock_user_storage = AsyncUserStorage::default();
-        mock_user_storage.write().unwrap().expect_list_records().times(1)
+        mock_user_storage
+            .write()
+            .unwrap()
+            .expect_list_records()
+            .times(1)
             .returning(|| Ok(vec!["first".to_owned(), "second".to_owned()]));
         let session = Session::Authorized(Authorized {
             username: String::default(),
-            user_storage: mock_user_storage
+            user_storage: mock_user_storage,
         });
 
         assert_eq!(list_records(&session).unwrap(), "first\nsecond");
@@ -53,11 +59,15 @@ mod tests {
     #[test]
     fn test_empty_list() {
         let mock_user_storage = AsyncUserStorage::default();
-        mock_user_storage.write().unwrap().expect_list_records().times(1)
+        mock_user_storage
+            .write()
+            .unwrap()
+            .expect_list_records()
+            .times(1)
             .returning(|| Ok(vec![]));
         let session = Session::Authorized(Authorized {
             username: String::default(),
-            user_storage: mock_user_storage
+            user_storage: mock_user_storage,
         });
 
         assert_eq!(list_records(&session).unwrap(), "");
@@ -67,22 +77,26 @@ mod tests {
     fn test_non_authorized() {
         let session = Session::default();
 
-        assert!(matches!(list_records(&session),
-            Err(Error::UnacceptableRequestAtThisState)));
+        assert!(matches!(
+            list_records(&session),
+            Err(Error::UnacceptableRequestAtThisState)
+        ));
     }
 
     #[test]
     fn test_storage_error() {
         let mock_user_storage = AsyncUserStorage::default();
-        mock_user_storage.write().unwrap().expect_list_records().times(1)
-            .returning(||Err(storage::Error::Io(
-                io::Error::new(io::ErrorKind::Other, ""))));
+        mock_user_storage
+            .write()
+            .unwrap()
+            .expect_list_records()
+            .times(1)
+            .returning(|| Err(storage::Error::Io(io::Error::new(io::ErrorKind::Other, ""))));
         let session = Session::Authorized(Authorized {
             username: String::default(),
-            user_storage: mock_user_storage
+            user_storage: mock_user_storage,
         });
 
-        assert!(matches!(list_records(&session),
-            Err(Error::Storage(_))));
+        assert!(matches!(list_records(&session), Err(Error::Storage(_))));
     }
 }

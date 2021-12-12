@@ -1,4 +1,4 @@
-use super::{Result, Error, AsyncStorage, ArgIter, utils};
+use super::{utils, ArgIter, AsyncStorage, Error, Result};
 use crate::storage::Key;
 use std::str::FromStr;
 
@@ -14,10 +14,8 @@ use std::str::FromStr;
 /// * `InvalidUsername` - if username is invalid
 /// * `EmptyKey` - if no key was provided
 /// * `InvalidKey` - if key is invalid
-/// * `Storage` - if can't create record cause of some error in
-/// `storage`
-pub fn register(storage: AsyncStorage, arg_iter: ArgIter)
-        -> Result<String> {
+/// * `Storage` - if can't create record cause of some error in `storage`
+pub fn register(storage: AsyncStorage, arg_iter: ArgIter) -> Result<String> {
     let username = arg_iter.next().ok_or(Error::EmptyUsername)?;
     if !utils::is_safe_for_filename(&username) {
         return Err(Error::InvalidUsername(username));
@@ -44,10 +42,16 @@ mod tests {
         const TEST_USER: &str = "test_user";
         const KEY_STR: &str = "11:11";
 
-        mock_storage.write().unwrap().expect_add_new_user().times(1)
-        .with(predicate::eq(TEST_USER),
-            predicate::eq(Key::from_str(KEY_STR).unwrap()))
-        .returning(|_, _| Ok(()));
+        mock_storage
+            .write()
+            .unwrap()
+            .expect_add_new_user()
+            .times(1)
+            .with(
+                predicate::eq(TEST_USER),
+                predicate::eq(Key::from_str(KEY_STR).unwrap()),
+            )
+            .returning(|_, _| Ok(()));
 
         let args = TEST_USER.to_owned() + " " + KEY_STR;
         let mut arg_iter = args.split_whitespace().map(str::to_owned);
@@ -69,8 +73,7 @@ mod tests {
         let mock_storage = AsyncStorage::default();
 
         const INVALID_USERNAME: &str = "_invalid_username_";
-        let mut arg_iter = INVALID_USERNAME.split_whitespace()
-            .map(str::to_owned);
+        let mut arg_iter = INVALID_USERNAME.split_whitespace().map(str::to_owned);
 
         let res = register(mock_storage, &mut arg_iter);
         assert!(matches!(res,
@@ -91,8 +94,7 @@ mod tests {
     fn test_invalid_key() {
         let mock_storage = AsyncStorage::default();
 
-        let mut arg_iter = "test_user key".split_whitespace()
-            .map(str::to_owned);
+        let mut arg_iter = "test_user key".split_whitespace().map(str::to_owned);
         let res = register(mock_storage, &mut arg_iter);
         assert!(matches!(res, Err(Error::InvalidKey(_))));
     }
@@ -101,11 +103,13 @@ mod tests {
     fn test_user_already_exists() {
         let mock_storage = AsyncStorage::default();
 
-        mock_storage.write().unwrap().expect_add_new_user().times(1)
-            .returning(|_, _|
-                Err(storage::Error::UserAlreadyExists("test_user".to_owned())));
-        let mut arg_iter = "test_user 11:11".split_whitespace()
-            .map(str::to_owned);
+        mock_storage
+            .write()
+            .unwrap()
+            .expect_add_new_user()
+            .times(1)
+            .returning(|_, _| Err(storage::Error::UserAlreadyExists("test_user".to_owned())));
+        let mut arg_iter = "test_user 11:11".split_whitespace().map(str::to_owned);
         let res = register(mock_storage, &mut arg_iter);
         assert!(matches!(res, Err(Error::Storage(_))));
     }

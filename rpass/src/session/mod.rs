@@ -2,27 +2,27 @@ mod connector;
 
 pub use crate::{error::*, Result};
 
+use crate::key::Key;
 #[mockall_double::double]
 use connector::Connector;
-use crate::key::Key;
-use std::net::{TcpStream, ToSocketAddrs};
 use enum_as_inner::EnumAsInner;
+use std::net::{TcpStream, ToSocketAddrs};
 
 /// Enum representing user session
 #[derive(EnumAsInner, Debug)]
 pub enum Session {
     Unauthorized(Unauthorized),
-    Authorized(Authorized)
+    Authorized(Authorized),
 }
 
 #[derive(Debug)]
 pub struct Unauthorized {
-    connector: Connector
+    connector: Connector,
 }
 
 #[derive(Debug)]
 pub struct Authorized {
-    connector: Connector
+    connector: Connector,
 }
 
 impl Session {
@@ -37,12 +37,10 @@ impl Session {
     /// * `Io` - if can't read bytes from server
     /// * `InvalidResponse` - if response isn't UTF-8 encoded
     /// * `InvalidKey` - if can't parse server key
-    pub fn new<A: ToSocketAddrs>(
-            addr: A, pub_key: Key, sec_key: Key) -> Result<Self> {
-        let stream = TcpStream::connect(addr)
-            .map_err(|_|Error::CantConnectToTheServer())?;
+    pub fn new<A: ToSocketAddrs>(addr: A, pub_key: Key, sec_key: Key) -> Result<Self> {
+        let stream = TcpStream::connect(addr).map_err(|_| Error::CantConnectToTheServer())?;
         let connector = Connector::new(stream, pub_key, sec_key)?;
-        Ok(Session::Unauthorized(Unauthorized{connector}))
+        Ok(Session::Unauthorized(Unauthorized { connector }))
     }
 }
 
@@ -61,14 +59,15 @@ impl Unauthorized {
     /// * `InvalidResponse` - if response isn't UTF-8 encoded
     /// * `InvalidUsernameOrKey` - if user with name `username` does not exists
     /// or pub(sec) key(-s) (see [`Session::new()`]) isn't (aren't) valid
-    pub fn login(mut self, username: &str)
-            -> std::result::Result<Authorized, LoginError> {
+    pub fn login(mut self, username: &str) -> std::result::Result<Authorized, LoginError> {
         match self.try_login(username) {
-            Ok(()) => Ok(Authorized{connector: self.connector}),
+            Ok(()) => Ok(Authorized {
+                connector: self.connector,
+            }),
             Err(err) => Err(LoginError {
                 source: err,
-                unauthorized: self
-            })
+                unauthorized: self,
+            }),
         }
     }
 
@@ -81,21 +80,21 @@ impl Unauthorized {
 
         let confirmation = self.connector.recv_response()?;
         if confirmation.starts_with("Error") {
-            return Err(Error::InvalidUsernameOrKey)
+            return Err(Error::InvalidUsernameOrKey);
         }
 
-        let decrypted_confirmation =
-            self.connector.sec_key().decrypt(&confirmation);
-        let encrypted_confirmation =
-            self.connector.server_pub_key().encrypt(&decrypted_confirmation);
+        let decrypted_confirmation = self.connector.sec_key().decrypt(&confirmation);
+        let encrypted_confirmation = self
+            .connector
+            .server_pub_key()
+            .encrypt(&decrypted_confirmation);
 
-        let confirm_login_request =
-            format!("confirm_login {}", encrypted_confirmation);
+        let confirm_login_request = format!("confirm_login {}", encrypted_confirmation);
         self.connector.send_request(confirm_login_request)?;
 
         match self.connector.recv_response()?.as_ref() {
             "Ok" => Ok(()),
-            _ => Err(Error::InvalidUsernameOrKey)
+            _ => Err(Error::InvalidUsernameOrKey),
         }
     }
 }
@@ -132,60 +131,77 @@ mod tests {
 
             let mut connector = Connector::default();
             expect_keys_for(&mut connector, sec_key, server_pub_key);
-            expect_send_request(&mut connector,
-                send_request_arg_validator);
+            expect_send_request(&mut connector, send_request_arg_validator);
             expect_recv_response(&mut connector, pub_key);
 
-            let unauthorized = Unauthorized {connector};
+            let unauthorized = Unauthorized { connector };
             unauthorized.login(TEST_USER).unwrap();
         }
 
         #[test]
         fn test_cant_send_login_request() {
             let mut connector = Connector::default();
-            connector.expect_send_request()
+            connector
+                .expect_send_request()
                 .with(eq(format!("login {}", TEST_USER)))
                 .times(1)
-                .returning(|_| Err(
-                    Error::Io(io::Error::new(io::ErrorKind::Other, ""))));
+                .returning(|_| Err(Error::Io(io::Error::new(io::ErrorKind::Other, ""))));
 
-            let unauthorized = Unauthorized {connector};
-            assert!(matches!(unauthorized.login(TEST_USER),
-                Err(LoginError { source: Error::Io(_), ..})));
+            let unauthorized = Unauthorized { connector };
+            assert!(matches!(
+                unauthorized.login(TEST_USER),
+                Err(LoginError {
+                    source: Error::Io(_),
+                    ..
+                })
+            ));
         }
 
         #[test]
         fn test_cant_recv_login_response() {
             let mut connector = Connector::default();
-            connector.expect_send_request()
+            connector
+                .expect_send_request()
                 .with(eq(format!("login {}", TEST_USER)))
                 .times(1)
                 .returning(|_| Ok(()));
-            connector.expect_recv_response()
-                .times(1)
-                .returning(|| Err(
-                    Error::InvalidResponse(
-                        String::from_utf8(vec![0, 159]).unwrap_err())));
+            connector.expect_recv_response().times(1).returning(|| {
+                Err(Error::InvalidResponse(
+                    String::from_utf8(vec![0, 159]).unwrap_err(),
+                ))
+            });
 
-            let unauthorized = Unauthorized {connector};
-            assert!(matches!(unauthorized.login(TEST_USER),
-                Err(LoginError { source: Error::InvalidResponse(_), ..})));
+            let unauthorized = Unauthorized { connector };
+            assert!(matches!(
+                unauthorized.login(TEST_USER),
+                Err(LoginError {
+                    source: Error::InvalidResponse(_),
+                    ..
+                })
+            ));
         }
 
         #[test]
         fn test_error_in_login_response() {
             let mut connector = Connector::default();
-            connector.expect_send_request()
+            connector
+                .expect_send_request()
                 .with(eq(format!("login {}", TEST_USER)))
                 .times(1)
                 .returning(|_| Ok(()));
-            connector.expect_recv_response()
+            connector
+                .expect_recv_response()
                 .times(1)
                 .returning(|| Ok(String::from("Error: invalid username")));
 
-            let unauthorized = Unauthorized {connector};
-            assert!(matches!(unauthorized.login(TEST_USER),
-                Err(LoginError { source: Error::InvalidUsernameOrKey, ..})));
+            let unauthorized = Unauthorized { connector };
+            assert!(matches!(
+                unauthorized.login(TEST_USER),
+                Err(LoginError {
+                    source: Error::InvalidUsernameOrKey,
+                    ..
+                })
+            ));
         }
 
         #[test]
@@ -210,22 +226,27 @@ mod tests {
 
             let mut connector = Connector::default();
             expect_keys_for(&mut connector, sec_key, server_pub_key);
-            connector.expect_send_request()
+            connector
+                .expect_send_request()
                 .withf_st(send_request_arg_validator)
                 .times(2)
                 .returning_st(move |_| match send_response_call_counter.get() {
                     1 => Ok(()),
-                    _ => Err(Error::Io(io::Error::new(io::ErrorKind::Other, "")))
+                    _ => Err(Error::Io(io::Error::new(io::ErrorKind::Other, ""))),
                 });
-            connector.expect_recv_response()
+            connector
+                .expect_recv_response()
                 .times(1)
-                .returning(move || {
-                    Ok(pub_key.encrypt(CONFIRMATION))
-                });
+                .returning(move || Ok(pub_key.encrypt(CONFIRMATION)));
 
-            let unauthorized = Unauthorized {connector};
-            assert!(matches!(unauthorized.login(TEST_USER),
-                Err(LoginError { source: Error::Io(_), ..})));
+            let unauthorized = Unauthorized { connector };
+            assert!(matches!(
+                unauthorized.login(TEST_USER),
+                Err(LoginError {
+                    source: Error::Io(_),
+                    ..
+                })
+            ));
         }
 
         #[test]
@@ -241,7 +262,8 @@ mod tests {
             let mut connector = Connector::default();
             expect_keys_for(&mut connector, sec_key, server_pub_key);
             expect_send_request(&mut connector, send_request_arg_validator);
-            connector.expect_recv_response()
+            connector
+                .expect_recv_response()
                 .times(2)
                 .returning(move || {
                     if recv_response_call_counter == 0 {
@@ -252,9 +274,14 @@ mod tests {
                     Err(Error::Io(io::Error::new(io::ErrorKind::Other, "")))
                 });
 
-            let unauthorized = Unauthorized {connector};
-            assert!(matches!(unauthorized.login(TEST_USER),
-                Err(LoginError { source: Error::Io(_), ..})));
+            let unauthorized = Unauthorized { connector };
+            assert!(matches!(
+                unauthorized.login(TEST_USER),
+                Err(LoginError {
+                    source: Error::Io(_),
+                    ..
+                })
+            ));
         }
 
         #[test]
@@ -268,10 +295,10 @@ mod tests {
             let mut recv_response_call_counter = 0u8;
 
             let mut connector = Connector::default();
-            expect_send_request(&mut connector,
-                send_request_arg_validator);
+            expect_send_request(&mut connector, send_request_arg_validator);
             expect_keys_for(&mut connector, sec_key, server_pub_key);
-            connector.expect_recv_response()
+            connector
+                .expect_recv_response()
                 .times(2)
                 .returning(move || {
                     if recv_response_call_counter == 0 {
@@ -282,15 +309,19 @@ mod tests {
                     Ok(String::from("Error: invalid confirmation string"))
                 });
 
-            let unauthorized = Unauthorized {connector};
-            assert!(matches!(unauthorized.login(TEST_USER),
-                Err(LoginError { source: Error::InvalidUsernameOrKey, ..})));
+            let unauthorized = Unauthorized { connector };
+            assert!(matches!(
+                unauthorized.login(TEST_USER),
+                Err(LoginError {
+                    source: Error::InvalidUsernameOrKey,
+                    ..
+                })
+            ));
         }
 
         /// Generates server public key and user's public and secret keys
         fn generate_keys() -> (Key, Key, Key) {
-            let server_pub_key = Key(11.to_biguint().unwrap(),
-                22.to_biguint().unwrap());
+            let server_pub_key = Key(11.to_biguint().unwrap(), 22.to_biguint().unwrap());
 
             // TODO Change next keys initialization to Key::generate_pair() when it
             // will be possible to pass generator
@@ -302,8 +333,7 @@ mod tests {
 
         /// Builds confirmation string that is expected to arrive as confirm_login
         /// request
-        fn build_expected_logging_confirmation(server_pub_key: &Key, sec_key: &Key)
-                -> String {
+        fn build_expected_logging_confirmation(server_pub_key: &Key, sec_key: &Key) -> String {
             let decrypted_confirmation = server_pub_key.decrypt(CONFIRMATION);
             sec_key.encrypt(&decrypted_confirmation)
         }
@@ -311,44 +341,43 @@ mod tests {
         /// Builds predicate to validate Connector::send_request() function during
         /// logging
         fn build_send_request_arg_validator_for(
-                expected_confirmation: String) -> impl Predicate<String> {
+            expected_confirmation: String,
+        ) -> impl Predicate<String> {
             let counter = Cell::new(0u8);
-            function(
-                move |val: &String| {
-                    if counter.get() == 0 {
-                        counter.set(counter.get() + 1);
-                        return val == &format!("login {}", TEST_USER);
-                    }
-                    val == &format!("confirm_login {}", expected_confirmation)
+            function(move |val: &String| {
+                if counter.get() == 0 {
+                    counter.set(counter.get() + 1);
+                    return val == &format!("login {}", TEST_USER);
                 }
-            )
+                val == &format!("confirm_login {}", expected_confirmation)
+            })
         }
 
         /// Adds expecting for sec_key() and server_pub_key() for `connector`
-        fn expect_keys_for(connector: &mut Connector, sec_key: Key,
-                server_pub_key: Key) {
-            connector.expect_sec_key()
-                .times(1)
-                .return_const(sec_key);
-            connector.expect_server_pub_key()
+        fn expect_keys_for(connector: &mut Connector, sec_key: Key, server_pub_key: Key) {
+            connector.expect_sec_key().times(1).return_const(sec_key);
+            connector
+                .expect_server_pub_key()
                 .times(1)
                 .return_const(server_pub_key);
         }
 
-        fn expect_send_request<P>(connector: &mut Connector,
-                validator: P)
-                where P: Predicate<String> + Send + 'static {
-            connector.expect_send_request()
+        fn expect_send_request<P>(connector: &mut Connector, validator: P)
+        where
+            P: Predicate<String> + Send + 'static,
+        {
+            connector
+                .expect_send_request()
                 .with(validator)
                 .times(2)
                 .returning(|_| Ok(()));
         }
 
         /// Adds expecting for recv_response() for `connector`
-        fn expect_recv_response(connector: &mut Connector,
-                pub_key: Key) {
+        fn expect_recv_response(connector: &mut Connector, pub_key: Key) {
             let mut recv_response_call_counter = 0u8;
-            connector.expect_recv_response()
+            connector
+                .expect_recv_response()
                 .times(2)
                 .returning(move || {
                     if recv_response_call_counter == 0 {

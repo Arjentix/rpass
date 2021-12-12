@@ -13,7 +13,7 @@ pub enum Session {
     Authorized(Authorized),
 
     /// Session, that still exists, but has been ended
-    Ended
+    Ended,
 }
 
 #[derive(Default)]
@@ -24,7 +24,7 @@ pub struct Unauthorized {
 
 pub struct Authorized {
     pub username: String,
-    pub user_storage: Arc<RwLock<UserStorage>>
+    pub user_storage: Arc<RwLock<UserStorage>>,
 }
 
 #[allow(dead_code)]

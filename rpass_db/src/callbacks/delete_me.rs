@@ -1,4 +1,4 @@
-use super::{Result, Error, AsyncStorage, session::*};
+use super::{session::*, AsyncStorage, Error, Result};
 
 /// Deletes current user. Takes *username* from `session` and deletes it in
 /// `storage`
@@ -8,9 +8,9 @@ use super::{Result, Error, AsyncStorage, session::*};
 /// * `UnacceptableRequestAtThisState` - if session is not an Authorized
 /// variant
 /// * `Storage` - if can't delete user cause of some error in `storage`
-pub fn delete_me(storage: AsyncStorage, session: &mut Session)
-        -> Result<String> {
-    let authorized_session = session.as_authorized()
+pub fn delete_me(storage: AsyncStorage, session: &mut Session) -> Result<String> {
+    let authorized_session = session
+        .as_authorized()
         .ok_or(Error::UnacceptableRequestAtThisState)?;
 
     let username = authorized_session.username.clone();
@@ -20,7 +20,7 @@ pub fn delete_me(storage: AsyncStorage, session: &mut Session)
     if let Err(err) = storage_write.delete_user(&username) {
         *session = Session::Authorized(Authorized {
             user_storage: storage_write.get_user_storage(&username).unwrap(),
-            username
+            username,
         });
         return Err(err.into());
     }
@@ -30,10 +30,10 @@ pub fn delete_me(storage: AsyncStorage, session: &mut Session)
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::{storage, AsyncUserStorage};
-    use std::io;
+    use super::*;
     use mockall::predicate;
+    use std::io;
 
     const TEST_USER: &str = "test_user";
 
@@ -42,11 +42,15 @@ mod tests {
         let mock_storage = AsyncStorage::default();
         let mut session = Session::Authorized(Authorized {
             username: TEST_USER.to_owned(),
-            user_storage: AsyncUserStorage::default()
+            user_storage: AsyncUserStorage::default(),
         });
 
-        mock_storage.write().unwrap().expect_delete_user()
-            .with(predicate::eq(TEST_USER)).returning(|_|Ok(()));
+        mock_storage
+            .write()
+            .unwrap()
+            .expect_delete_user()
+            .with(predicate::eq(TEST_USER))
+            .returning(|_| Ok(()));
         let res = delete_me(mock_storage, &mut session);
         assert_eq!(res.unwrap(), "Ok");
         assert!(matches!(session, Session::Unauthorized(_)));
@@ -58,8 +62,10 @@ mod tests {
         let mock_storage = AsyncStorage::default();
         let mut session = Session::default();
 
-        assert!(matches!(delete_me(mock_storage, &mut session),
-            Err(Error::UnacceptableRequestAtThisState)));
+        assert!(matches!(
+            delete_me(mock_storage, &mut session),
+            Err(Error::UnacceptableRequestAtThisState)
+        ));
     }
 
     #[test]
@@ -67,17 +73,17 @@ mod tests {
         let mock_storage = AsyncStorage::default();
         let mut session = Session::Authorized(Authorized {
             username: TEST_USER.to_owned(),
-            user_storage: AsyncUserStorage::default()
+            user_storage: AsyncUserStorage::default(),
         });
 
         {
             let mut mock_storage_write = mock_storage.write().unwrap();
-            mock_storage_write.expect_delete_user()
+            mock_storage_write
+                .expect_delete_user()
                 .with(predicate::eq(TEST_USER))
-                .returning(|_|
-                    Err(storage::Error::UnsupportedActionForMultiSession)
-                );
-            mock_storage_write.expect_get_user_storage()
+                .returning(|_| Err(storage::Error::UnsupportedActionForMultiSession));
+            mock_storage_write
+                .expect_get_user_storage()
                 .with(predicate::eq(TEST_USER))
                 .returning(|_| Ok(AsyncUserStorage::default()));
         }
@@ -91,21 +97,19 @@ mod tests {
         let mock_storage = AsyncStorage::default();
         let mut session = Session::Authorized(Authorized {
             username: TEST_USER.to_owned(),
-            user_storage: AsyncUserStorage::default()
+            user_storage: AsyncUserStorage::default(),
         });
 
         {
             let mut mock_storage_write = mock_storage.write().unwrap();
-            mock_storage_write.expect_delete_user()
-            .with(predicate::eq(TEST_USER))
-            .returning(|_|
-                Err(storage::Error::UnsupportedActionForMultiSession)
-            );
-            mock_storage_write.expect_get_user_storage()
-            .with(predicate::eq(TEST_USER))
-            .returning(|_| Err(
-                storage::Error::Io(io::Error::new(io::ErrorKind::Other, "")))
-            );
+            mock_storage_write
+                .expect_delete_user()
+                .with(predicate::eq(TEST_USER))
+                .returning(|_| Err(storage::Error::UnsupportedActionForMultiSession));
+            mock_storage_write
+                .expect_get_user_storage()
+                .with(predicate::eq(TEST_USER))
+                .returning(|_| Err(storage::Error::Io(io::Error::new(io::ErrorKind::Other, ""))));
         }
         let _ = delete_me(mock_storage, &mut session);
     }
