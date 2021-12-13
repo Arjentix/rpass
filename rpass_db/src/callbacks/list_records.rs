@@ -19,7 +19,10 @@ pub fn list_records(session: &Session) -> Result<String> {
         storage_read.list_records()?
     };
 
-    Ok(to_string_with_delimiter(&record_names, "\n"))
+    match to_string_with_delimiter(&record_names, "\n") {
+        x if x.is_empty() => Ok(String::from("No records yet")),
+        s => Ok(s),
+    }
 }
 
 /// Catenates strings from `values` delimiting them with `delimiter`
@@ -70,7 +73,7 @@ mod tests {
             user_storage: mock_user_storage,
         });
 
-        assert_eq!(list_records(&session).unwrap(), "");
+        assert_eq!(list_records(&session).unwrap(), "No records yet");
     }
 
     #[test]
