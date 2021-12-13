@@ -8,7 +8,7 @@ pub use record::*;
 #[mockall_double::double]
 pub use user_storage::UserStorage;
 
-pub use rpass::key::*;
+pub use rpass::key::{self, Key};
 
 use std::collections::HashMap;
 use std::fs;
@@ -65,7 +65,9 @@ impl Storage {
         let user_dir = self.path.join(username);
         let pub_key_file = user_dir.join(PUB_KEY_FILENAME);
         fs::create_dir(user_dir).map_err(|_| Error::UserAlreadyExists(username.to_owned()))?;
-        fs::write(pub_key_file, pub_key.as_bytes()).map_err(|err| err.into())
+        pub_key
+            .write_to_file(pub_key_file)
+            .map_err(|err| err.into())
     }
 
     /// Deletes user's files and directory
@@ -117,7 +119,7 @@ impl Storage {
         if !pub_key_file.exists() {
             return Err(Error::UserDoesNotExist(username.to_owned()));
         }
-        Key::from_bytes(&fs::read(pub_key_file)?).map_err(|err| err.into())
+        Key::from_file(pub_key_file).map_err(|err| err.into())
     }
 
     /// Gets storage public key
@@ -161,9 +163,10 @@ impl Storage {
     /// Any possible error during files writing
     fn init_keys(path: &Path) -> Result<()> {
         let (pub_key, sec_key) = Key::generate_pair();
-        fs::write(path.join("key.pub"), pub_key.as_bytes())?;
-        fs::write(path.join("key.sec"), sec_key.as_bytes())?;
-        Ok(())
+        pub_key.write_to_file(path.join("key.pub"))?;
+        sec_key
+            .write_to_file(path.join("key.sec"))
+            .map_err(|err| err.into())
     }
 
     /// Reads public and secret keys from files *key.pub* and *key.sec*
@@ -172,8 +175,8 @@ impl Storage {
     ///
     /// Any possible error during files reading and keys constructing
     fn read_keys(path: &Path) -> Result<(Key, Key)> {
-        let pub_key = Key::from_bytes(&fs::read(path.join("key.pub"))?)?;
-        let sec_key = Key::from_bytes(&fs::read(path.join("key.sec"))?)?;
+        let pub_key = Key::from_file(path.join("key.pub"))?;
+        let sec_key = Key::from_file(path.join("key.sec"))?;
         Ok((pub_key, sec_key))
     }
 }

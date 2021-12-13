@@ -15,7 +15,7 @@ pub enum Error {
     EmptyKey,
 
     #[error("invalid key: `{0}`")]
-    InvalidKey(#[from] rpass::key::ParseKeyError),
+    InvalidKey(#[from] rpass::key::ParseError),
 
     #[error("empty confirmation string")]
     EmptyConfirmationString,

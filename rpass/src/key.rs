@@ -1,12 +1,33 @@
 pub use num_bigint::{BigUint, ParseBigIntError, ToBigUint};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use std::io::{Read, Result, Write};
+use std::fs;
+use std::io::{Read, Write};
+use std::path::Path;
 use std::str::FromStr;
 
 /// RSA-Key
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Key(pub BigUint, pub BigUint);
+
+pub type Result<T> = std::result::Result<T, Error>;
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    #[error("parse error: {0}")]
+    ParseKey(#[from] ParseError),
+
+    #[error("io error: {0}")]
+    Io(#[from] std::io::Error),
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum ParseError {
+    #[error("invalid format")]
+    InvalidFormat,
+    #[error("error parsing big int: {0}")]
+    ParseBigInt(#[from] ParseBigIntError),
+}
 
 impl Key {
     /// Returns byte representation of key
@@ -28,6 +49,48 @@ impl Key {
             Self::read_part(&mut bytes)?,
             Self::read_part(&mut bytes)?,
         ))
+    }
+
+    /// Reads key from file by `path`
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use rpass::key::{Key, Result};
+    ///
+    /// # fn main() -> Result<()> {
+    /// let key = Key::from_file("~/key.sec")?;
+    /// key.decrypt("secret_message");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn from_file<P>(path: P) -> Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        let content = fs::read_to_string(path)?;
+        Self::from_str(&content).map_err(|err| err.into())
+    }
+
+    /// Writes key to file by `path`
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use rpass::key::{Key, Result};
+    ///
+    /// # fn main() -> Result<()> {
+    /// let (pub_key, sec_key) = Key::generate_pair();
+    /// pub_key.write_to_file("~/key.pub")?;
+    /// sec_key.write_to_file("~/key.sec")
+    /// # }
+    /// ```
+    pub fn write_to_file<P>(&self, path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        let content = self.to_string();
+        fs::write(path, content).map_err(|err| err.into())
     }
 
     /// Generate pair of public and secret keys
@@ -76,16 +139,8 @@ impl Key {
     }
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum ParseKeyError {
-    #[error("invalid key format")]
-    InvalidKeyFormat,
-    #[error("Error parsing big int: {0}")]
-    ParseBigIntError(#[from] ParseBigIntError),
-}
-
 impl FromStr for Key {
-    type Err = ParseKeyError;
+    type Err = ParseError;
 
     /// Constructs new key from string in format `<first_num>:<second_num>`
     ///
@@ -100,9 +155,9 @@ impl FromStr for Key {
     /// assert_eq!(key.1, 19634u64.to_biguint().unwrap());
     /// ```
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        let (pub_part, sec_part) = s.split_once(":").ok_or(ParseKeyError::InvalidKeyFormat)?;
+        let (pub_part, sec_part) = s.split_once(":").ok_or(ParseError::InvalidFormat)?;
         if pub_part.is_empty() || sec_part.is_empty() {
-            return Err(ParseKeyError::InvalidKeyFormat);
+            return Err(ParseError::InvalidFormat);
         }
         Ok(Key(
             BigUint::from_str(pub_part)?,
@@ -188,15 +243,15 @@ mod tests {
     fn test_from_invalid_format() {
         assert!(matches!(
             Key::from_str("156"),
-            Err(ParseKeyError::InvalidKeyFormat)
+            Err(ParseError::InvalidFormat)
         ));
         assert!(matches!(
             Key::from_str("19704:"),
-            Err(ParseKeyError::InvalidKeyFormat)
+            Err(ParseError::InvalidFormat)
         ));
         assert!(matches!(
             Key::from_str(":9758"),
-            Err(ParseKeyError::InvalidKeyFormat)
+            Err(ParseError::InvalidFormat)
         ));
     }
 
@@ -204,7 +259,7 @@ mod tests {
     fn test_from_str_not_a_number() {
         assert!(matches!(
             Key::from_str("public:key"),
-            Err(ParseKeyError::ParseBigIntError(_))
+            Err(ParseError::ParseBigInt(_))
         ));
     }
 

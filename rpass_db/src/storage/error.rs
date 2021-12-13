@@ -1,4 +1,4 @@
-use super::Record;
+use super::{key, Record};
 
 use std::io;
 use std::path::PathBuf;
@@ -23,4 +23,7 @@ pub enum Error {
 
     #[error("can't perform action cause of others active sessions")]
     UnsupportedActionForMultiSession,
+
+    #[error("key error: {0}")]
+    Key(#[from] key::Error),
 }

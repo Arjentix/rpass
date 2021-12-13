@@ -27,7 +27,7 @@ impl UserStorage {
             return Err(Error::UserDoesNotExist(real_path.display().to_string()));
         }
 
-        let pub_key = Key::from_bytes(&fs::read(real_path.join("key.pub"))?)?;
+        let pub_key = Key::from_file(real_path.join("key.pub"))?;
         Ok(UserStorage {
             path: real_path.to_path_buf(),
             pub_key,
