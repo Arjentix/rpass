@@ -59,6 +59,27 @@ impl Unauthorized {
     /// * `InvalidResponse` - if response isn't UTF-8 encoded
     /// * `InvalidUsernameOrKey` - if user with name `username` does not exists
     /// or pub(sec) key(-s) (see [`Session::new()`]) isn't (aren't) valid
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use std::error::Error;
+    /// use rpass::{session::Session, key::Key};
+    ///
+    /// # fn main() -> std::result::Result<(), Box<dyn Error>> {
+    /// let pub_key = Key::from_file("~/key.pub")?;
+    /// let sec_key = Key::from_file("~/key.sec")?;
+    /// let mut session = Session::new("127.0.0.1:3747", pub_key, sec_key)?;
+    /// session = match session.into_unauthorized().unwrap().login("user") {
+    ///     Ok(authorized) => Session::Authorized(authorized),
+    ///     Err(login_err) => {
+    ///         println!("Login error: {}", login_err);
+    ///         Session::Unauthorized(login_err.unauthorized)
+    ///     }
+    /// };
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn login(mut self, username: &str) -> std::result::Result<Authorized, LoginError> {
         match self.try_login(username) {
             Ok(()) => Ok(Authorized {
