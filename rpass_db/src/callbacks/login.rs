@@ -15,6 +15,7 @@ use rand::{thread_rng, Rng};
 /// # Errors
 ///
 /// * `EmptyUsername` - if no username was provided
+/// * `InvalidUsername` - if username is invalid
 /// * `Storage` - if can't create record cause of some error in
 /// `storage`
 pub fn login(storage: AsyncStorage, session: &mut Session, arg_iter: ArgIter) -> Result<String> {
