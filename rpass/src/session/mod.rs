@@ -5,15 +5,7 @@ pub use crate::{error::*, Result};
 use crate::key::Key;
 #[mockall_double::double]
 use connector::Connector;
-use enum_as_inner::EnumAsInner;
 use std::net::{TcpStream, ToSocketAddrs};
-
-/// Enum representing user session
-#[derive(EnumAsInner, Debug)]
-pub enum Session {
-    Unauthorized(Unauthorized),
-    Authorized(Authorized),
-}
 
 #[derive(Debug)]
 pub struct Unauthorized {
@@ -25,8 +17,8 @@ pub struct Authorized {
     connector: Connector,
 }
 
-impl Session {
-    /// Creates new Session initialized with **Unauthorized** variant
+impl Unauthorized {
+    /// Creates new Unauthorized
     ///
     /// Connects to rpass server on `addr` and stores `pub_key` and `sec_key`
     /// for later use
@@ -40,11 +32,9 @@ impl Session {
     pub fn new<A: ToSocketAddrs>(addr: A, pub_key: Key, sec_key: Key) -> Result<Self> {
         let stream = TcpStream::connect(addr).map_err(|_| Error::CantConnectToTheServer())?;
         let connector = Connector::new(stream, pub_key, sec_key)?;
-        Ok(Session::Unauthorized(Unauthorized { connector }))
+        Ok(Unauthorized { connector })
     }
-}
 
-impl Unauthorized {
     /// Attempts to log in to the server with `username` name.
     /// Uses keys provided by [`Session::new()`] to decrypt and encrypt messages
     ///
@@ -64,19 +54,14 @@ impl Unauthorized {
     ///
     /// ```no_run
     /// # use std::error::Error;
-    /// use rpass::{session::Session, key::Key};
+    /// use rpass::{session, key::Key};
     ///
     /// # fn main() -> std::result::Result<(), Box<dyn Error>> {
     /// let pub_key = Key::from_file("~/key.pub")?;
     /// let sec_key = Key::from_file("~/key.sec")?;
-    /// let mut session = Session::new("127.0.0.1:3747", pub_key, sec_key)?;
-    /// session = match session.into_unauthorized().unwrap().login("user") {
-    ///     Ok(authorized) => Session::Authorized(authorized),
-    ///     Err(login_err) => {
-    ///         println!("Login error: {}", login_err);
-    ///         Session::Unauthorized(login_err.unauthorized)
-    ///     }
-    /// };
+    /// let session = session::Unauthorized::new("127.0.0.1:3747", pub_key, sec_key)?;
+    /// let session = session.login("user")?;
+    /// println!("Successfully logged in");
     /// # Ok(())
     /// # }
     /// ```
