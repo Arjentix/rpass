@@ -5,7 +5,7 @@ use std::string::FromUtf8Error;
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("can't connect to the server")]
-    CantConnectToTheServer(),
+    CantConnectToTheServer,
 
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),

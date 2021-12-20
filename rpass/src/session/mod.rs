@@ -30,7 +30,7 @@ impl Unauthorized {
     /// * `InvalidResponse` - if response isn't UTF-8 encoded
     /// * `InvalidKey` - if can't parse server key
     pub fn new<A: ToSocketAddrs>(addr: A, pub_key: Key, sec_key: Key) -> Result<Self> {
-        let stream = TcpStream::connect(addr).map_err(|_| Error::CantConnectToTheServer())?;
+        let stream = TcpStream::connect(addr).map_err(|_| Error::CantConnectToTheServer)?;
         let connector = Connector::new(stream, pub_key, sec_key)?;
         Ok(Unauthorized { connector })
     }
