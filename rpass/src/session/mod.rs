@@ -34,6 +34,38 @@ impl Unauthorized {
         Ok(Unauthorized { connector })
     }
 
+    /// Registers new user with `username` and `pub_key`
+    ///
+    /// # Errors
+    ///
+    /// * `Io` - if can't write or read bytes to/from server
+    /// * `InvalidResponse` - if response isn't UTF-8 encoded
+    /// * `Server` - if server response contains error message
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use std::error::Error;
+    /// use rpass::{session, key::Key};
+    ///
+    /// # fn main() -> std::result::Result<(), Box<dyn Error>> {
+    /// let pub_key = Key::from_file("~/pub.sec")?;
+    /// let mut session = session::Unauthorized::new("127.0.0.1:3747")?;
+    /// session.register("user", pub_key)?;
+    /// println!("Successfully registered new user");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn register(&mut self, username: &str, pub_key: &Key) -> Result<()> {
+        let register_request = format!("register {} {}", username, pub_key.to_string());
+        self.connector.send_request(register_request)?;
+
+        match self.connector.recv_response()? {
+            ok if ok == "Ok" => Ok(()),
+            mes => Err(Error::Server { mes }),
+        }
+    }
+
     /// Attempts to log in to the server with `username` name.
     /// Uses `sec_key` to prove identity.
     ///
