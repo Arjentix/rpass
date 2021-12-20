@@ -145,6 +145,86 @@ impl Authorized {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use num_bigint::ToBigUint;
+
+    mod register {
+        use super::*;
+
+        use mockall::predicate::*;
+
+        use std::io;
+
+        const TEST_USER: &str = "test_user";
+
+        #[test]
+        fn test_ok() {
+            let (_, pub_key, _) = generate_keys();
+            let mut connector = Connector::default();
+            connector
+                .expect_send_request()
+                .with(eq(format!(
+                    "register {} {}",
+                    TEST_USER,
+                    pub_key.to_string()
+                )))
+                .times(1)
+                .returning(|_| Ok(()));
+            connector
+                .expect_recv_response()
+                .times(1)
+                .returning(|| Ok(String::from("Ok")));
+
+            let mut unauthorized = Unauthorized { connector };
+            unauthorized.register(TEST_USER, &pub_key).unwrap();
+        }
+
+        #[test]
+        fn test_cant_send_request() {
+            let (_, pub_key, _) = generate_keys();
+            let mut connector = Connector::default();
+            connector
+                .expect_send_request()
+                .with(eq(format!(
+                    "register {} {}",
+                    TEST_USER,
+                    pub_key.to_string()
+                )))
+                .times(1)
+                .returning(|_| Err(Error::Io(io::Error::new(io::ErrorKind::Other, ""))));
+
+            let mut unauthorized = Unauthorized { connector };
+            assert!(matches!(
+                unauthorized.register(TEST_USER, &pub_key),
+                Err(Error::Io(_))
+            ));
+        }
+
+        #[test]
+        fn test_cant_recv_response() {
+            let (_, pub_key, _) = generate_keys();
+            let mut connector = Connector::default();
+            connector
+                .expect_send_request()
+                .with(eq(format!(
+                    "register {} {}",
+                    TEST_USER,
+                    pub_key.to_string()
+                )))
+                .times(1)
+                .returning(|_| Ok(()));
+            connector.expect_recv_response().times(1).returning(|| {
+                Err(Error::InvalidResponse(
+                    String::from_utf8(vec![0, 159]).unwrap_err(),
+                ))
+            });
+
+            let mut unauthorized = Unauthorized { connector };
+            assert!(matches!(
+                unauthorized.register(TEST_USER, &pub_key),
+                Err(Error::InvalidResponse(_))
+            ));
+        }
+    }
 
     /// Tests for Unauthorized::login()
     mod login {
@@ -154,7 +234,6 @@ mod tests {
         use std::rc::Rc;
 
         use mockall::{predicate::*, Predicate};
-        use num_bigint::ToBigUint;
 
         const TEST_USER: &str = "test_user";
         const CONFIRMATION: &str = "confirmation";
@@ -240,7 +319,7 @@ mod tests {
             assert!(matches!(
                 unauthorized.login(TEST_USER, &sec_key),
                 Err(LoginError {
-                    source: Error::Server {..},
+                    source: Error::Server { .. },
                     ..
                 })
             ));
@@ -355,22 +434,10 @@ mod tests {
             assert!(matches!(
                 unauthorized.login(TEST_USER, &sec_key),
                 Err(LoginError {
-                    source: Error::Server {..},
+                    source: Error::Server { .. },
                     ..
                 })
             ));
-        }
-
-        /// Generates server public key and user's public and secret keys
-        fn generate_keys() -> (Key, Key, Key) {
-            let server_pub_key = Key(11.to_biguint().unwrap(), 22.to_biguint().unwrap());
-
-            // TODO Change next keys initialization to Key::generate_pair() when it
-            // will be possible to pass generator
-            let pub_key = Key(269.to_biguint().unwrap(), 221.to_biguint().unwrap());
-            let sec_key = Key(5.to_biguint().unwrap(), 221.to_biguint().unwrap());
-
-            (server_pub_key, pub_key, sec_key)
         }
 
         /// Builds confirmation string that is expected to arrive as confirm_login
@@ -427,5 +494,17 @@ mod tests {
                     Ok(String::from("Ok"))
                 });
         }
+    }
+
+    /// Generates server public key and user's public and secret keys
+    fn generate_keys() -> (Key, Key, Key) {
+        let server_pub_key = Key(11.to_biguint().unwrap(), 22.to_biguint().unwrap());
+
+        // TODO Change next keys initialization to Key::generate_pair() when it
+        // will be possible to pass generator
+        let pub_key = Key(269.to_biguint().unwrap(), 221.to_biguint().unwrap());
+        let sec_key = Key(5.to_biguint().unwrap(), 221.to_biguint().unwrap());
+
+        (server_pub_key, pub_key, sec_key)
     }
 }
