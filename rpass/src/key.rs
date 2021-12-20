@@ -8,6 +8,7 @@ use std::str::FromStr;
 
 /// RSA-Key
 #[derive(PartialEq, Eq, Debug, Clone)]
+#[cfg_attr(feature = "enable-serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Key(pub BigUint, pub BigUint);
 
 pub type Result<T> = std::result::Result<T, Error>;

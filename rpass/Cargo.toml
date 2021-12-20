@@ -11,6 +11,10 @@ byteorder = "1.4.3"
 thiserror = "1.0"
 enum-as-inner = "0.3.3"
 mockall_double = "0.2.0"
+serde_internal = { package = "serde", version = "1.0", optional = true, features = ["derive"] }
 
 [dev-dependencies]
 mockall = "0.10.2"
+
+[features]
+enable-serde = ["serde_internal", "num-bigint/serde"]
