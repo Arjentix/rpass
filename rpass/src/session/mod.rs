@@ -20,8 +20,7 @@ pub struct Authorized {
 impl Unauthorized {
     /// Creates new Unauthorized
     ///
-    /// Connects to rpass server on `addr` and stores `pub_key` and `sec_key`
-    /// for later use
+    /// Connects to rpass server on `addr`
     ///
     /// # Errors
     ///
@@ -29,14 +28,15 @@ impl Unauthorized {
     /// * `Io` - if can't read bytes from server
     /// * `InvalidResponse` - if response isn't UTF-8 encoded
     /// * `InvalidKey` - if can't parse server key
-    pub fn new<A: ToSocketAddrs>(addr: A, pub_key: Key, sec_key: Key) -> Result<Self> {
+    pub fn new<A: ToSocketAddrs>(addr: A) -> Result<Self> {
         let stream = TcpStream::connect(addr).map_err(|_| Error::CantConnectToTheServer)?;
-        let connector = Connector::new(stream, pub_key, sec_key)?;
+        let connector = Connector::new(stream)?;
         Ok(Unauthorized { connector })
     }
 
     /// Attempts to log in to the server with `username` name.
-    /// Uses keys provided by [`Session::new()`] to decrypt and encrypt messages
+    /// Uses `sec_key` to prove identity.
+    ///
     ///
     /// Consumes `self` and returns `Authorized` object on success or `self` on
     /// failure
@@ -47,8 +47,7 @@ impl Unauthorized {
     ///
     /// * `Io` - if can't write or read bytes to/from server
     /// * `InvalidResponse` - if response isn't UTF-8 encoded
-    /// * `InvalidUsernameOrKey` - if user with name `username` does not exists
-    /// or pub(sec) key(-s) (see [`Session::new()`]) isn't (aren't) valid
+    /// * `Server` - if server response contains error message
     ///
     /// # Example
     ///
@@ -57,16 +56,19 @@ impl Unauthorized {
     /// use rpass::{session, key::Key};
     ///
     /// # fn main() -> std::result::Result<(), Box<dyn Error>> {
-    /// let pub_key = Key::from_file("~/key.pub")?;
     /// let sec_key = Key::from_file("~/key.sec")?;
-    /// let session = session::Unauthorized::new("127.0.0.1:3747", pub_key, sec_key)?;
-    /// let session = session.login("user")?;
+    /// let session = session::Unauthorized::new("127.0.0.1:3747")?;
+    /// let session = session.login("user", sec_key)?;
     /// println!("Successfully logged in");
     /// # Ok(())
     /// # }
     /// ```
-    pub fn login(mut self, username: &str) -> std::result::Result<Authorized, LoginError> {
-        match self.try_login(username) {
+    pub fn login(
+        mut self,
+        username: &str,
+        sec_key: &Key,
+    ) -> std::result::Result<Authorized, LoginError> {
+        match self.try_login(username, sec_key) {
             Ok(()) => Ok(Authorized {
                 connector: self.connector,
             }),
@@ -77,30 +79,29 @@ impl Unauthorized {
         }
     }
 
-    /// Tries to log in to the server without consuming `self`
+    /// Tries to log in to the server
     ///
     /// See [`Unauthorized::login()`] for details
-    fn try_login(&mut self, username: &str) -> Result<()> {
+    fn try_login(&mut self, username: &str, sec_key: &Key) -> Result<()> {
         let login_request = format!("login {}", username);
         self.connector.send_request(login_request)?;
 
-        let confirmation = self.connector.recv_response()?;
-        if confirmation.starts_with("Error") {
-            return Err(Error::InvalidUsernameOrKey);
+        let login_response = self.connector.recv_response()?;
+        if login_response.starts_with("Error") {
+            return Err(Error::Server {
+                mes: login_response,
+            });
         }
 
-        let decrypted_confirmation = self.connector.sec_key().decrypt(&confirmation);
-        let encrypted_confirmation = self
-            .connector
-            .server_pub_key()
-            .encrypt(&decrypted_confirmation);
+        let confirmation = sec_key.decrypt(&login_response);
+        let encrypted_confirmation = self.connector.server_pub_key().encrypt(&confirmation);
 
         let confirm_login_request = format!("confirm_login {}", encrypted_confirmation);
         self.connector.send_request(confirm_login_request)?;
 
-        match self.connector.recv_response()?.as_ref() {
-            "Ok" => Ok(()),
-            _ => Err(Error::InvalidUsernameOrKey),
+        match self.connector.recv_response()? {
+            ok if ok == "Ok" => Ok(()),
+            mes => Err(Error::Server { mes }),
         }
     }
 }

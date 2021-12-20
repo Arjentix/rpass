@@ -19,8 +19,8 @@ pub enum Error {
     #[error("invalid key")]
     InvalidKey(#[from] <Key as FromStr>::Err),
 
-    #[error("invalid username or key")]
-    InvalidUsernameOrKey,
+    #[error("server error: {mes}")]
+    Server { mes: String },
 }
 
 #[derive(thiserror::Error, Debug)]

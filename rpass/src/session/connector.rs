@@ -12,8 +12,6 @@ use mockall::automock;
 pub struct Connector {
     stream: TcpStream,
     buf_stream_reader: BufReader<TcpStream>,
-    pub_key: Key,
-    sec_key: Key,
     server_pub_key: Key,
 }
 
@@ -32,14 +30,12 @@ impl Connector {
     /// bytes to/from server
     /// * `InvalidKey` - if can't parse server key
     /// * `InvalidResponse` - if response isn't UTF-8 encoded
-    pub fn new(stream: TcpStream, pub_key: Key, sec_key: Key) -> Result<Self> {
+    pub fn new(stream: TcpStream) -> Result<Self> {
         let mut buf_stream_reader = BufReader::new(stream.try_clone()?);
         let server_pub_key = Self::read_server_pub_key(&mut buf_stream_reader)?;
         Ok(Connector {
             stream,
             buf_stream_reader,
-            pub_key,
-            sec_key,
             server_pub_key,
         })
     }
@@ -75,16 +71,6 @@ impl Connector {
     fn read_server_pub_key<R: BufRead + 'static>(reader: &mut R) -> Result<Key> {
         let key = read_response(reader)?;
         Key::from_str(&key).map_err(|err| err.into())
-    }
-
-    /// Get a reference to the connector's pub key.
-    pub fn pub_key(&self) -> &Key {
-        &self.pub_key
-    }
-
-    /// Get a reference to the connector's sec key.
-    pub fn sec_key(&self) -> &Key {
-        &self.sec_key
     }
 
     /// Get a reference to the connector's server pub key.
