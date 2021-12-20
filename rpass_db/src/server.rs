@@ -128,7 +128,7 @@ impl Server {
 
     /// Reads bytes from `reader` until EOT byte is captured.
     /// Returns bytes without EOT byte
-    fn read_request_bytes(reader: &mut BufReader<TcpStream>) -> Result<Vec<u8>> {
+    fn read_request_bytes<R: BufRead>(mut reader: R) -> Result<Vec<u8>> {
         let mut buf = vec![];
         reader.read_until(Self::EOT, &mut buf)?;
         buf.pop();

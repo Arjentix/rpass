@@ -108,7 +108,7 @@ impl Drop for Connector {
 ///
 /// * `Io` - if can't read bytes from `reader`
 /// * `InvalidResponse` - if response isn't UTF-8 encoded
-fn read_response<R: BufRead>(reader: &mut R) -> Result<String> {
+fn read_response<R: BufRead>(mut reader: R) -> Result<String> {
     let mut buf = vec![];
     let size = reader.read_until(EOT, &mut buf)?;
     if size == 0 {
@@ -133,7 +133,7 @@ fn read_response<R: BufRead>(reader: &mut R) -> Result<String> {
 ///
 /// * `Io` - if can't send bytes to `writer`
 /// * `InvalidRequest` - if `request` contains EOT byte
-fn write_request<W: Write>(writer: &mut W, request: String) -> Result<()> {
+fn write_request<W: Write>(mut writer: W, request: String) -> Result<()> {
     writer
         .write_all(&make_request(request)?)
         .map_err(|err| err.into())

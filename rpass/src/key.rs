@@ -122,7 +122,7 @@ impl Key {
     /// # Panics
     ///
     /// Panics if can't write to the buffer
-    fn write_part(part: &BigUint, write: &mut dyn Write) {
+    fn write_part<W: Write>(part: &BigUint, mut write: W) {
         let part_bytes = part.to_bytes_le();
         write
             .write_u64::<LittleEndian>(part_bytes.len() as u64)
@@ -131,7 +131,7 @@ impl Key {
     }
 
     /// Reads one part of key from the `read`
-    fn read_part(read: &mut dyn Read) -> Result<BigUint> {
+    fn read_part<R: Read>(mut read: R) -> Result<BigUint> {
         let len = read.read_u64::<LittleEndian>()? as usize;
         let mut part_bytes = vec![0u8; len];
         read.read_exact(&mut part_bytes)?;
