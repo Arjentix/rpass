@@ -51,7 +51,7 @@ impl Unauthorized {
     /// # fn main() -> std::result::Result<(), Box<dyn Error>> {
     /// let pub_key = Key::from_file("~/pub.sec")?;
     /// let mut session = session::Unauthorized::new("127.0.0.1:3747")?;
-    /// session.register("user", pub_key)?;
+    /// session.register("user", &pub_key)?;
     /// println!("Successfully registered new user");
     /// # Ok(())
     /// # }
@@ -90,7 +90,7 @@ impl Unauthorized {
     /// # fn main() -> std::result::Result<(), Box<dyn Error>> {
     /// let sec_key = Key::from_file("~/key.sec")?;
     /// let session = session::Unauthorized::new("127.0.0.1:3747")?;
-    /// let session = session.login("user", sec_key)?;
+    /// let session = session.login("user", &sec_key)?;
     /// println!("Successfully logged in");
     /// # Ok(())
     /// # }
@@ -169,16 +169,17 @@ mod tests {
             };
 
             let mut connector = Connector::default();
-            expect_keys_for(&mut connector, sec_key, server_pub_key);
+            expect_server_pub_key(&mut connector, server_pub_key);
             expect_send_request(&mut connector, send_request_arg_validator);
             expect_recv_response(&mut connector, pub_key);
 
             let unauthorized = Unauthorized { connector };
-            unauthorized.login(TEST_USER).unwrap();
+            unauthorized.login(TEST_USER, &sec_key).unwrap();
         }
 
         #[test]
         fn test_cant_send_login_request() {
+            let (_, _, sec_key) = generate_keys();
             let mut connector = Connector::default();
             connector
                 .expect_send_request()
@@ -188,7 +189,7 @@ mod tests {
 
             let unauthorized = Unauthorized { connector };
             assert!(matches!(
-                unauthorized.login(TEST_USER),
+                unauthorized.login(TEST_USER, &sec_key),
                 Err(LoginError {
                     source: Error::Io(_),
                     ..
@@ -198,6 +199,7 @@ mod tests {
 
         #[test]
         fn test_cant_recv_login_response() {
+            let (_, _, sec_key) = generate_keys();
             let mut connector = Connector::default();
             connector
                 .expect_send_request()
@@ -212,7 +214,7 @@ mod tests {
 
             let unauthorized = Unauthorized { connector };
             assert!(matches!(
-                unauthorized.login(TEST_USER),
+                unauthorized.login(TEST_USER, &sec_key),
                 Err(LoginError {
                     source: Error::InvalidResponse(_),
                     ..
@@ -222,6 +224,7 @@ mod tests {
 
         #[test]
         fn test_error_in_login_response() {
+            let (_, _, sec_key) = generate_keys();
             let mut connector = Connector::default();
             connector
                 .expect_send_request()
@@ -235,9 +238,9 @@ mod tests {
 
             let unauthorized = Unauthorized { connector };
             assert!(matches!(
-                unauthorized.login(TEST_USER),
+                unauthorized.login(TEST_USER, &sec_key),
                 Err(LoginError {
-                    source: Error::InvalidUsernameOrKey,
+                    source: Error::Server {..},
                     ..
                 })
             ));
@@ -264,7 +267,7 @@ mod tests {
             };
 
             let mut connector = Connector::default();
-            expect_keys_for(&mut connector, sec_key, server_pub_key);
+            expect_server_pub_key(&mut connector, server_pub_key);
             connector
                 .expect_send_request()
                 .withf_st(send_request_arg_validator)
@@ -280,7 +283,7 @@ mod tests {
 
             let unauthorized = Unauthorized { connector };
             assert!(matches!(
-                unauthorized.login(TEST_USER),
+                unauthorized.login(TEST_USER, &sec_key),
                 Err(LoginError {
                     source: Error::Io(_),
                     ..
@@ -299,7 +302,7 @@ mod tests {
             let mut recv_response_call_counter = 0u8;
 
             let mut connector = Connector::default();
-            expect_keys_for(&mut connector, sec_key, server_pub_key);
+            expect_server_pub_key(&mut connector, server_pub_key);
             expect_send_request(&mut connector, send_request_arg_validator);
             connector
                 .expect_recv_response()
@@ -315,7 +318,7 @@ mod tests {
 
             let unauthorized = Unauthorized { connector };
             assert!(matches!(
-                unauthorized.login(TEST_USER),
+                unauthorized.login(TEST_USER, &sec_key),
                 Err(LoginError {
                     source: Error::Io(_),
                     ..
@@ -335,7 +338,7 @@ mod tests {
 
             let mut connector = Connector::default();
             expect_send_request(&mut connector, send_request_arg_validator);
-            expect_keys_for(&mut connector, sec_key, server_pub_key);
+            expect_server_pub_key(&mut connector, server_pub_key);
             connector
                 .expect_recv_response()
                 .times(2)
@@ -350,9 +353,9 @@ mod tests {
 
             let unauthorized = Unauthorized { connector };
             assert!(matches!(
-                unauthorized.login(TEST_USER),
+                unauthorized.login(TEST_USER, &sec_key),
                 Err(LoginError {
-                    source: Error::InvalidUsernameOrKey,
+                    source: Error::Server {..},
                     ..
                 })
             ));
@@ -392,9 +395,7 @@ mod tests {
             })
         }
 
-        /// Adds expecting for sec_key() and server_pub_key() for `connector`
-        fn expect_keys_for(connector: &mut Connector, sec_key: Key, server_pub_key: Key) {
-            connector.expect_sec_key().times(1).return_const(sec_key);
+        fn expect_server_pub_key(connector: &mut Connector, server_pub_key: Key) {
             connector
                 .expect_server_pub_key()
                 .times(1)
