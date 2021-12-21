@@ -16,7 +16,7 @@ This project contains three crates:
 | :-----------------: | :--: | :--: | :--: |
 |    Registration     |  ✅   |  ✅   |      |
 |        Login        |  ✅   |  ✅   |      |
-|  Clear user's data  |  ✅   |      |      |
+|  Clear user's data  |  ✅   |  ✅   |      |
 |     New record      |  ✅   |      |      |
 |    Delete record    |  ✅   |      |      |
 |     Show record     |  ✅   |      |      |
