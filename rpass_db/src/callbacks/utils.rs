@@ -6,7 +6,7 @@
 /// * Doesn't contains `..`
 /// * Doesn't start with `.`, `@` or `_`
 /// * Doesn't end with `.`, `@` or `_`
-/// * Doesn't equal to `key.pub`
+/// * Doesn't equal to `key.pub` or `key.sec`
 /// * No more than 32 characters in length
 pub fn is_safe_for_filename(name: &str) -> bool {
     !(name.is_empty()
@@ -22,6 +22,7 @@ pub fn is_safe_for_filename(name: &str) -> bool {
         || name.ends_with('@')
         || name.ends_with('_')
         || name == "key.pub"
+        || name == "key.sec"
         || name.len() > 32)
 }
 
@@ -48,6 +49,7 @@ mod tests {
         assert!(!is_safe_for_filename("_user"));
         assert!(!is_safe_for_filename("user_"));
         assert!(!is_safe_for_filename("key.pub"));
+        assert!(!is_safe_for_filename("key.sec"));
         assert!(!is_safe_for_filename(
             &String::from_utf8(vec![b'X'; 33]).unwrap()
         ));
