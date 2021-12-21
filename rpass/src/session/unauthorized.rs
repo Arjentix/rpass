@@ -138,6 +138,7 @@ mod tests {
     use super::*;
     use num_bigint::ToBigUint;
 
+    /// Tests for `Unauthorized::register()`
     mod register {
         use super::*;
 
@@ -217,7 +218,7 @@ mod tests {
         }
     }
 
-    /// Tests for Unauthorized::login()
+    /// Tests for `Unauthorized::login()`
     mod login {
         use super::*;
         use std::cell::Cell;

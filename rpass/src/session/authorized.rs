@@ -62,3 +62,76 @@ impl Authorized {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use mockall::predicate::*;
+
+    /// Tests for `Authorized::delete_me()`
+    mod delete_me {
+        use super::*;
+        use std::io;
+
+        #[test]
+        fn test_ok() {
+            let mut connector = Connector::default();
+            connector
+                .expect_send_request()
+                .with(eq(String::from("delete_me")))
+                .times(1)
+                .returning(|_| Ok(()));
+            connector
+                .expect_recv_response()
+                .times(1)
+                .returning(|| Ok(String::from("Ok")));
+
+            let authorized = Authorized::new(connector);
+            authorized.delete_me().unwrap();
+        }
+
+        #[test]
+        fn test_cant_send_request() {
+            let mut connector = Connector::default();
+            connector
+                .expect_send_request()
+                .with(eq(String::from("delete_me")))
+                .times(1)
+                .returning(|_| Err(Error::Io(io::Error::new(io::ErrorKind::Other, ""))));
+
+            let authorized = Authorized::new(connector);
+            assert!(matches!(
+                authorized.delete_me(),
+                Err(DeleteMeError {
+                    source: Error::Io(_),
+                    ..
+                })
+            ));
+        }
+
+        #[test]
+        fn test_cant_recv_response() {
+            let mut connector = Connector::default();
+            connector
+                .expect_send_request()
+                .with(eq(String::from("delete_me")))
+                .times(1)
+                .returning(|_| Ok(()));
+            connector.expect_recv_response().times(1).returning(|| {
+                Err(Error::InvalidResponse(
+                    String::from_utf8(vec![0, 159]).unwrap_err(),
+                ))
+            });
+
+            let authorized = Authorized::new(connector);
+            assert!(matches!(
+                authorized.delete_me(),
+                Err(DeleteMeError {
+                    source: Error::InvalidResponse(_),
+                    ..
+                })
+            ));
+        }
+    }
+}
