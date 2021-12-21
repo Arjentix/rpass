@@ -4,6 +4,7 @@ pub use std::borrow::Cow;
 use crate::session::Session;
 use regex::Regex;
 use std::collections::HashMap;
+
 pub type ArgIter<'a> = &'a mut dyn Iterator<Item = String>;
 pub type Result<T> = std::result::Result<T, Error>;
 

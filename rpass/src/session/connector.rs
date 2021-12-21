@@ -1,7 +1,8 @@
+pub use std::net::TcpStream;
+
 use crate::key::Key;
 use crate::{Error, Result};
 use std::io::{BufRead, BufReader, Write};
-use std::net::TcpStream;
 use std::str::FromStr;
 
 #[cfg(test)]

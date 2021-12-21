@@ -1,8 +1,9 @@
+pub mod storage;
+
 mod callbacks;
 mod request_dispatcher;
 mod server;
 mod session;
-pub mod storage;
 
 use request_dispatcher::RequestDispatcher;
 use server::Server;

@@ -8,7 +8,7 @@
 /// * Doesn't end with `.`, `@` or `_`
 /// * No more than 32 characters in length
 pub fn is_safe_for_filename(name: &str) -> bool {
-    if name.is_empty()
+    !(name.is_empty()
         || !name
             .chars()
             .all(|c| char::is_ascii_alphanumeric(&c) || c == '.' || c == '@' || c == '_')
@@ -20,12 +20,7 @@ pub fn is_safe_for_filename(name: &str) -> bool {
         || name.ends_with('.')
         || name.ends_with('@')
         || name.ends_with('_')
-        || name.len() > 32
-    {
-        return false;
-    }
-
-    true
+        || name.len() > 32)
 }
 
 fn is_contains_two_dots(s: &str) -> bool {

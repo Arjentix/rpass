@@ -1,14 +1,14 @@
+pub use error::Error;
+pub use record::*;
+pub use rpass::key::{self, Key};
+#[mockall_double::double]
+pub use user_storage::UserStorage;
+
 mod error;
 mod record;
 mod user_storage;
 
-pub use error::Error;
-pub use record::*;
-
-#[mockall_double::double]
-pub use user_storage::UserStorage;
-
-pub use rpass::key::{self, Key};
+pub type Result<T> = std::result::Result<T, Error>;
 
 use std::collections::HashMap;
 use std::fs;
@@ -17,8 +17,6 @@ use std::sync::{Arc, RwLock, Weak};
 
 #[cfg(test)]
 use mockall::automock;
-
-pub type Result<T> = std::result::Result<T, Error>;
 
 const PUB_KEY_FILENAME: &str = "key.pub";
 
