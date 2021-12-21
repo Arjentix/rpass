@@ -1,6 +1,4 @@
-pub use crate::{error::*, Result};
-
-use super::{Authorized, Connector};
+use super::{Authorized, Connector, Error, LoginError, Result};
 use crate::key::Key;
 use std::net::{TcpStream, ToSocketAddrs};
 
@@ -27,6 +25,11 @@ impl Unauthorized {
         let stream = TcpStream::connect(addr).map_err(|_| Error::CantConnectToTheServer)?;
         let connector = Connector::new(stream)?;
         Ok(Unauthorized { connector })
+    }
+
+    /// Creates new Unauthorized directly accepting `connector`
+    pub(super) fn with_connector(connector: Connector) -> Self {
+        Unauthorized { connector }
     }
 
     /// Registers new user with `username` and `pub_key`
@@ -64,8 +67,7 @@ impl Unauthorized {
     /// Attempts to log in to the server with `username` name.
     /// Uses `sec_key` to prove identity.
     ///
-    ///
-    /// Consumes `self` and returns `Authorized` object on success or `self` on
+    /// Consumes `self` and returns `Authorized` object on success or `LoginError` with `self` on
     /// failure
     ///
     /// # Errors

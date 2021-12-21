@@ -1,4 +1,7 @@
-use crate::{key::Key, session::Unauthorized};
+use crate::{
+    key::Key,
+    session::{Authorized, Unauthorized},
+};
 use std::str::FromStr;
 use std::string::FromUtf8Error;
 
@@ -28,4 +31,11 @@ pub enum Error {
 pub struct LoginError {
     pub source: Error,
     pub unauthorized: Unauthorized,
+}
+
+#[derive(thiserror::Error, Debug)]
+#[error("{source}")]
+pub struct DeleteMeError {
+    pub source: Error,
+    pub authorized: Authorized,
 }
