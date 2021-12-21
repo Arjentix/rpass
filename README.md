@@ -14,7 +14,7 @@ This project contains three crates:
 
 |       Feature       |  db  | lib  | cli  |
 | :-----------------: | :--: | :--: | :--: |
-|    Registration     |  ✅   |      |      |
+|    Registration     |  ✅   |  ✅   |      |
 |        Login        |  ✅   |  ✅   |      |
 |  Clear user's data  |  ✅   |      |      |
 |     New record      |  ✅   |      |      |
