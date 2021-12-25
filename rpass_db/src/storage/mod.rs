@@ -1,11 +1,10 @@
 pub use error::Error;
-pub use record::*;
 pub use rpass::key::{self, Key};
+pub use rpass::record::*;
 #[mockall_double::double]
 pub use user_storage::UserStorage;
 
 mod error;
-mod record;
 mod user_storage;
 
 pub type Result<T> = std::result::Result<T, Error>;

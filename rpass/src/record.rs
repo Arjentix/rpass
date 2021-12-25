@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 /// User record with password
 #[derive(Default, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "enable-serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Record {
     pub resource: String, // Resource to store password from
     pub password: String, // Password, encrypted with user public key

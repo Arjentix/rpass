@@ -1,8 +1,7 @@
-use super::{key, Record};
+use super::{key, ParseRecordError};
 
 use std::io;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -19,7 +18,7 @@ pub enum Error {
     UserDoesNotExist(String),
 
     #[error("record parsing error: {0}")]
-    CantParseRecord(#[from] <Record as FromStr>::Err),
+    CantParseRecord(#[from] ParseRecordError),
 
     #[error("can't perform action cause of others active sessions")]
     UnsupportedActionForMultiSession,
