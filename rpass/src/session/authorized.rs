@@ -18,6 +18,7 @@ impl Authorized {
     ///
     /// # Errors
     ///
+    /// * `InvalidRecord` - if record's resource is empty
     /// * `Io` - if can't write or read bytes to/from server
     /// * `InvalidResponse` - if response isn't UTF-8 encoded
     /// * `Server` - if server response contains error message
@@ -43,6 +44,12 @@ impl Authorized {
     /// # }
     /// ```
     pub fn add_record(&mut self, record: &Record) -> Result<()> {
+        if record.resource.is_empty() {
+            return Err(Error::InvalidRecord {
+                mes: String::from("record's resource can't be empty"),
+            });
+        }
+
         let request = format!("new_record {} \"{}\"", record.resource, record.to_string());
         self.connector.send_request(request)?;
 
@@ -122,6 +129,23 @@ mod tests {
 
             let mut authorized = Authorized::new(connector);
             authorized.add_record(&record).unwrap();
+        }
+
+        #[test]
+        fn test_invalid_record() {
+            let record = Record {
+                resource: String::default(),
+                password: String::from("secret"),
+                notes: String::from("notes"),
+            };
+
+            let connector = Connector::default();
+
+            let mut authorized = Authorized::new(connector);
+            assert!(matches!(
+                authorized.add_record(&record),
+                Err(Error::InvalidRecord { .. })
+            ));
         }
 
         #[test]
