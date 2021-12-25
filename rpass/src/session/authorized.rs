@@ -1,4 +1,4 @@
-use super::{Connector, DeleteMeError, Error, Result, Unauthorized};
+use super::{Connector, DeleteMeError, Error, Record, Result, Unauthorized};
 
 /// Authorized session
 ///
@@ -14,9 +14,44 @@ impl Authorized {
         Authorized { connector }
     }
 
+    /// Add `record` to the storage
+    ///
+    /// # Errors
+    ///
+    /// * `Io` - if can't write or read bytes to/from server
+    /// * `InvalidResponse` - if response isn't UTF-8 encoded
+    /// * `Server` - if server response contains error message
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use std::error::Error;
+    /// use rpass::{session, key::Key, record::Record};
+    ///
+    /// # fn main() -> std::result::Result<(), Box<dyn Error>> {
+    /// let sec_key = Key::from_file("~/key.sec")?;
+    /// let record = Record {
+    ///     resource: String::from("example.com"),
+    ///     password: String::from("secret"),
+    ///     notes: String::from("important notes")
+    /// };
+    ///
+    /// let mut session = session::Unauthorized::new("127.0.0.1:3747")?;
+    /// let mut session = session.login("user", &sec_key)?;
+    /// session.add_record(&record)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn add_record(&mut self, record: &Record) -> Result<()> {
+        let request = format!("new_record {}", record.to_string());
+        self.connector.send_request(request)?;
+
+        self.check_response()
+    }
+
     /// Deletes all information about user the session is associated with
     ///
-    /// Consumes `self` and returns `Authorized` object on success or `DeleteMeError` with `self`
+    /// Consumes `self` and returns `Unauthorized` object on success or `DeleteMeError` with `self`
     /// on failure
     ///
     /// # Errors
@@ -55,7 +90,12 @@ impl Authorized {
     /// See [`Authorized::login()`] for details
     fn try_delete_me(&mut self) -> Result<()> {
         self.connector.send_request(String::from("delete_me"))?;
+        self.check_response()
+    }
 
+    /// Checks if server response contains *"Ok"* value.
+    /// If not then returns `Error::Server`
+    fn check_response(&mut self) -> Result<()> {
         match self.connector.recv_response()? {
             ok if ok == "Ok" => Ok(()),
             mes => Err(Error::Server { mes }),

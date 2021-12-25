@@ -8,4 +8,4 @@ mod unauthorized;
 #[mockall_double::double]
 use connector::Connector;
 
-use super::{error::*, Result};
+use super::{error::*, record::Record, Result};
