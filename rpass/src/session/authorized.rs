@@ -43,7 +43,7 @@ impl Authorized {
     /// # }
     /// ```
     pub fn add_record(&mut self, record: &Record) -> Result<()> {
-        let request = format!("new_record {}", record.to_string());
+        let request = format!("new_record {} \"{}\"", record.resource, record.to_string());
         self.connector.send_request(request)?;
 
         self.check_response()
@@ -106,26 +106,72 @@ impl Authorized {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use mockall::predicate::*;
+    use std::io;
+
+    /// Tests for `Authorized::delete_me()`
+    mod add_record {
+        use super::*;
+
+        #[test]
+        fn test_ok() {
+            let record = build_record();
+
+            let mut connector = Connector::default();
+            expect_all_ok(&mut connector, build_request(&record));
+
+            let mut authorized = Authorized::new(connector);
+            authorized.add_record(&record).unwrap();
+        }
+
+        #[test]
+        fn test_cant_send_request() {
+            let record = build_record();
+
+            let mut connector = Connector::default();
+            expect_failing_send_request(&mut connector, build_request(&record));
+
+            let mut authorized = Authorized::new(connector);
+            assert!(matches!(authorized.add_record(&record), Err(Error::Io(_))));
+        }
+
+        #[test]
+        fn test_cant_recv_response() {
+            let record = build_record();
+
+            let mut connector = Connector::default();
+            expect_failing_recv_response(&mut connector, build_request(&record));
+
+            let mut authorized = Authorized::new(connector);
+            assert!(matches!(
+                authorized.add_record(&record),
+                Err(Error::InvalidResponse(_))
+            ));
+        }
+
+        /// Builds test record
+        fn build_record() -> Record {
+            Record {
+                resource: String::from("test.com"),
+                password: String::from("secret"),
+                notes: String::from("important notes"),
+            }
+        }
+
+        /// Build expected request for `record`
+        fn build_request(record: &Record) -> String {
+            format!("new_record {} \"{}\"", record.resource, record.to_string())
+        }
+    }
 
     /// Tests for `Authorized::delete_me()`
     mod delete_me {
         use super::*;
-        use std::io;
 
         #[test]
         fn test_ok() {
             let mut connector = Connector::default();
-            connector
-                .expect_send_request()
-                .with(eq(String::from("delete_me")))
-                .times(1)
-                .returning(|_| Ok(()));
-            connector
-                .expect_recv_response()
-                .times(1)
-                .returning(|| Ok(String::from("Ok")));
+            expect_all_ok(&mut connector, String::from("delete_me"));
 
             let authorized = Authorized::new(connector);
             authorized.delete_me().unwrap();
@@ -134,11 +180,7 @@ mod tests {
         #[test]
         fn test_cant_send_request() {
             let mut connector = Connector::default();
-            connector
-                .expect_send_request()
-                .with(eq(String::from("delete_me")))
-                .times(1)
-                .returning(|_| Err(Error::Io(io::Error::new(io::ErrorKind::Other, ""))));
+            expect_failing_send_request(&mut connector, String::from("delete_me"));
 
             let authorized = Authorized::new(connector);
             assert!(matches!(
@@ -153,16 +195,7 @@ mod tests {
         #[test]
         fn test_cant_recv_response() {
             let mut connector = Connector::default();
-            connector
-                .expect_send_request()
-                .with(eq(String::from("delete_me")))
-                .times(1)
-                .returning(|_| Ok(()));
-            connector.expect_recv_response().times(1).returning(|| {
-                Err(Error::InvalidResponse(
-                    String::from_utf8(vec![0, 159]).unwrap_err(),
-                ))
-            });
+            expect_failing_recv_response(&mut connector, String::from("delete_me"));
 
             let authorized = Authorized::new(connector);
             assert!(matches!(
@@ -173,5 +206,43 @@ mod tests {
                 })
             ));
         }
+    }
+
+    /// Expect `connector` to have successful `send_request()` with `request` as expected request
+    /// and successful `recv_response()`
+    fn expect_all_ok(connector: &mut Connector, request: String) {
+        connector
+            .expect_send_request()
+            .with(eq(request))
+            .times(1)
+            .returning(|_| Ok(()));
+        connector
+            .expect_recv_response()
+            .times(1)
+            .returning(|| Ok(String::from("Ok")));
+    }
+
+    /// Expect `connector` to accept `request` into `send_request` and then return error
+    fn expect_failing_send_request(connector: &mut Connector, request: String) {
+        connector
+            .expect_send_request()
+            .with(eq(request))
+            .times(1)
+            .returning(|_| Err(Error::Io(io::Error::new(io::ErrorKind::Other, ""))));
+    }
+
+    /// Expect `connector` to have successful `send_request()` with `request` as expected request
+    /// and `recv_response()` returning error
+    fn expect_failing_recv_response(connector: &mut Connector, request: String) {
+        connector
+            .expect_send_request()
+            .with(eq(request))
+            .times(1)
+            .returning(|_| Ok(()));
+        connector.expect_recv_response().times(1).returning(|| {
+            Err(Error::InvalidResponse(
+                String::from_utf8(vec![0, 159]).unwrap_err(),
+            ))
+        });
     }
 }
