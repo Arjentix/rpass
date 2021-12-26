@@ -44,13 +44,45 @@ impl Authorized {
     /// # }
     /// ```
     pub fn add_record(&mut self, record: &Record) -> Result<()> {
-        if record.resource.is_empty() {
-            return Err(Error::InvalidRecord {
-                mes: String::from("record's resource can't be empty"),
-            });
-        }
+        Self::check_resource(&record.resource)?;
 
         let request = format!("new_record {} \"{}\"", record.resource, record.to_string());
+        self.connector.send_request(request)?;
+
+        self.check_response()
+    }
+
+    /// Deletes record with `resource` name
+    ///
+    /// # Errors
+    ///
+    /// * `InvalidRecord` - if `resource` is empty
+    /// * `Io` - if can't write or read bytes to/from server
+    /// * `InvalidResponse` - if response isn't UTF-8 encoded
+    /// * `Server` - if server response contains error message
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use rpass::session::Authorized;
+    /// use std::io;
+    /// use std::error::Error;
+    ///
+    /// fn read_resource_and_delete(session: &mut Authorized) -> Result<(), Box<dyn Error>> {
+    /// let resource = {
+    ///     let mut buffer = String::new();
+    ///     let mut stdin = io::stdin();
+    ///     stdin.read_line(&mut buffer)?;
+    ///     buffer
+    /// };
+    ///
+    /// session.delete_record(&resource).map_err(|err| err.into())
+    /// }
+    /// ```
+    pub fn delete_record(&mut self, resource: &str) -> Result<()> {
+        Self::check_resource(resource)?;
+
+        let request = format!("delete_record {} ", resource);
         self.connector.send_request(request)?;
 
         self.check_response()
@@ -98,6 +130,21 @@ impl Authorized {
     fn try_delete_me(&mut self) -> Result<()> {
         self.connector.send_request(String::from("delete_me"))?;
         self.check_response()
+    }
+
+    /// Checks if `resource` is empty
+    ///
+    /// # Errors
+    ///
+    /// Returns `InvalidRecord` if `resource` is empty
+    fn check_resource(resource: &str) -> Result<()> {
+        if let true = resource.is_empty() {
+            return Err(Error::InvalidRecord {
+                mes: String::from("record's resource can't be empty"),
+            });
+        }
+
+        Ok(())
     }
 
     /// Checks if server response contains *"Ok"* value.
