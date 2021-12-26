@@ -1,4 +1,4 @@
-use super::{Authorized, Connector, Error, LoginError, Result};
+use super::{utils, Authorized, Connector, Error, LoginError, Result};
 use crate::key::Key;
 use std::net::{TcpStream, ToSocketAddrs};
 
@@ -58,10 +58,7 @@ impl Unauthorized {
         let register_request = format!("register {} {}", username, pub_key.to_string());
         self.connector.send_request(register_request)?;
 
-        match self.connector.recv_response()? {
-            ok if ok == "Ok" => Ok(()),
-            mes => Err(Error::Server { mes }),
-        }
+        utils::read_ok_response(&mut self.connector)
     }
 
     /// Attempts to log in to the server with `username` name.
@@ -113,12 +110,7 @@ impl Unauthorized {
         let login_request = format!("login {}", username);
         self.connector.send_request(login_request)?;
 
-        let login_response = self.connector.recv_response()?;
-        if login_response.starts_with("Error") {
-            return Err(Error::Server {
-                mes: login_response,
-            });
-        }
+        let login_response = utils::read_good_response(&mut self.connector)?;
 
         let confirmation = sec_key.decrypt(&login_response);
         let encrypted_confirmation = self.connector.server_pub_key().encrypt(&confirmation);
@@ -126,10 +118,7 @@ impl Unauthorized {
         let confirm_login_request = format!("confirm_login {}", encrypted_confirmation);
         self.connector.send_request(confirm_login_request)?;
 
-        match self.connector.recv_response()? {
-            ok if ok == "Ok" => Ok(()),
-            mes => Err(Error::Server { mes }),
-        }
+        utils::read_ok_response(&mut self.connector)
     }
 }
 
@@ -426,9 +415,9 @@ mod tests {
             assert!(matches!(
                 unauthorized.login(TEST_USER, &sec_key),
                 Err(LoginError {
-                    source: Error::Server { .. },
+                    source: Error::Server { mes },
                     ..
-                })
+                }) if mes == "invalid confirmation string"
             ));
         }
 

@@ -1,4 +1,4 @@
-use super::{Connector, DeleteMeError, Error, Record, Result, Unauthorized};
+use super::{utils, Connector, DeleteMeError, Error, Record, Result, Unauthorized};
 use std::cell::RefCell;
 use std::str::FromStr;
 
@@ -53,7 +53,7 @@ impl Authorized {
         let request = format!("new_record {} \"{}\"", record.resource, record.to_string());
         self.connector.get_mut().send_request(request)?;
 
-        self.check_response()
+        self.read_ok_response()
     }
 
     /// Deletes record with `resource` name
@@ -89,7 +89,7 @@ impl Authorized {
         let request = format!("delete_record {}", resource);
         self.connector.get_mut().send_request(request)?;
 
-        self.check_response()
+        self.read_ok_response()
     }
 
     /// Show record with `resource` name
@@ -128,10 +128,7 @@ impl Authorized {
         let mut connector = self.connector.borrow_mut();
         connector.send_request(request)?;
 
-        let response = connector.recv_response()?;
-        if response.starts_with("Error") {
-            return Err(Error::Server { mes: response });
-        }
+        let response = utils::read_good_response(&mut connector)?;
 
         Ok(Record {
             resource,
@@ -182,7 +179,7 @@ impl Authorized {
         self.connector
             .get_mut()
             .send_request(String::from("delete_me"))?;
-        self.check_response()
+        self.read_ok_response()
     }
 
     /// Checks if `resource` is empty
@@ -200,13 +197,9 @@ impl Authorized {
         Ok(())
     }
 
-    /// Checks if server response contains *"Ok"* value.
-    /// If not then returns `Error::Server`
-    fn check_response(&self) -> Result<()> {
-        match self.connector.borrow_mut().recv_response()? {
-            ok if ok == "Ok" => Ok(()),
-            mes => Err(Error::Server { mes }),
-        }
+    /// See [`utils::read_ok_response()`]
+    fn read_ok_response(&mut self) -> Result<()> {
+        utils::read_ok_response(self.connector.get_mut())
     }
 }
 
@@ -437,7 +430,7 @@ mod tests {
             let authorized = Authorized::new(connector);
             assert!(matches!(
                 authorized.get_record(resource),
-                Err(Error::Server { .. })
+                Err(Error::Server { mes }) if mes == "no such record"
             ));
         }
     }

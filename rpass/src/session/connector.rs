@@ -106,9 +106,9 @@ fn read_response<R: BufRead>(mut reader: R) -> Result<String> {
         buf.pop();
     }
 
-    let mut response = String::from_utf8(buf)?;
-    if response.ends_with("\r\n") {
-        for _ in response.drain(response.len() - 2..) {}
+    let response = String::from_utf8(buf)?;
+    if let Some(stripped) = response.strip_suffix("\r\n") {
+        return Ok(stripped.to_string());
     }
 
     Ok(response)

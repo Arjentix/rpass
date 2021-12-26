@@ -31,6 +31,9 @@ pub enum Error {
 
     #[error("server error: {mes}")]
     Server { mes: String },
+
+    #[error("unexpected response: {response}")]
+    UnexpectedResponse { response: String },
 }
 
 #[derive(thiserror::Error, Debug)]
