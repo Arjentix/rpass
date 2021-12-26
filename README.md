@@ -18,7 +18,7 @@ This project contains three crates:
 |        Login        |  ✅   |  ✅   |      |
 |  Clear user's data  |  ✅   |  ✅   |      |
 |     New record      |  ✅   |  ✅   |      |
-|    Delete record    |  ✅   |      |      |
+|    Delete record    |  ✅   |  ✅   |      |
 |     Show record     |  ✅   |      |      |
 | List user's records |  ✅   |      |      |
 |  Dump user's data   |      |      |      |
