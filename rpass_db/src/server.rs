@@ -117,7 +117,7 @@ impl Server {
         let dispatcher_read = self.dispatcher.read().unwrap();
         let mut response = match dispatcher_read.dispatch(session, request) {
             Ok(response) => response,
-            Err(err) => format!("Error: {}\r\n", err.to_string()),
+            Err(err) => format!("Error: {}\r\n", err),
         };
 
         if !response.ends_with("\r\n") {
