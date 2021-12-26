@@ -350,6 +350,98 @@ mod tests {
             ));
         }
     }
+
+    /// Tests for `Authorized::get_record()`
+    mod get_record {
+        use super::*;
+
+        #[test]
+        fn test_ok() {
+            let resource = "test_resource";
+
+            let record = Record {
+                resource: resource.to_string(),
+                password: String::from("secret"),
+                notes: String::from("notes"),
+            };
+            let record_str = record.to_string();
+
+            let mut connector = Connector::default();
+            connector
+                .expect_send_request()
+                .with(eq(format!("show_record {}", resource)))
+                .times(1)
+                .returning(|_| Ok(()));
+            connector
+                .expect_recv_response()
+                .times(1)
+                .return_once(move || Ok(record_str));
+
+            let authorized = Authorized::new(connector);
+            assert_eq!(authorized.get_record(resource.to_string()).unwrap(), record);
+        }
+
+        #[test]
+        fn test_invalid_resource() {
+            let resource = String::default();
+
+            let connector = Connector::default();
+
+            let authorized = Authorized::new(connector);
+            assert!(matches!(
+                authorized.get_record(resource),
+                Err(Error::InvalidResource { .. })
+            ));
+        }
+
+        #[test]
+        fn test_cant_send_request() {
+            let resource = String::from("test_resource");
+
+            let mut connector = Connector::default();
+            expect_failing_send_request(&mut connector, format!("show_record {}", resource));
+
+            let authorized = Authorized::new(connector);
+            assert!(matches!(authorized.get_record(resource), Err(Error::Io(_))));
+        }
+
+        #[test]
+        fn test_cant_recv_response() {
+            let resource = String::from("test_resource");
+
+            let mut connector = Connector::default();
+            expect_failing_recv_response(&mut connector, format!("show_record {}", resource));
+
+            let authorized = Authorized::new(connector);
+            assert!(matches!(
+                authorized.get_record(resource),
+                Err(Error::InvalidResponse(_))
+            ));
+        }
+
+        #[test]
+        fn test_error_from_server() {
+            let resource = String::from("test_resource");
+
+            let mut connector = Connector::default();
+            connector
+                .expect_send_request()
+                .with(eq(format!("show_record {}", resource)))
+                .times(1)
+                .returning(|_| Ok(()));
+            connector
+                .expect_recv_response()
+                .times(1)
+                .returning(|| Ok(String::from("Error: no such record")));
+
+            let authorized = Authorized::new(connector);
+            assert!(matches!(
+                authorized.get_record(resource),
+                Err(Error::Server { .. })
+            ));
+        }
+    }
+
     /// Tests for `Authorized::delete_me()`
     mod delete_me {
         use super::*;
