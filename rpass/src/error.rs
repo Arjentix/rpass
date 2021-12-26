@@ -22,8 +22,8 @@ pub enum Error {
     #[error("invalid key")]
     InvalidKey(#[from] <Key as FromStr>::Err),
 
-    #[error("invalid record: {mes}")]
-    InvalidRecord { mes: String },
+    #[error("invalid resource: {mes}")]
+    InvalidResource { mes: String },
 
     #[error("server error: {mes}")]
     Server { mes: String },

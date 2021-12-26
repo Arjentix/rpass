@@ -18,7 +18,7 @@ impl Authorized {
     ///
     /// # Errors
     ///
-    /// * `InvalidRecord` - if record's resource is empty
+    /// * `InvalidResource` - if record's resource is empty
     /// * `Io` - if can't write or read bytes to/from server
     /// * `InvalidResponse` - if response isn't UTF-8 encoded
     /// * `Server` - if server response contains error message
@@ -56,7 +56,7 @@ impl Authorized {
     ///
     /// # Errors
     ///
-    /// * `InvalidRecord` - if `resource` is empty
+    /// * `InvalidResource` - if `resource` is empty
     /// * `Io` - if can't write or read bytes to/from server
     /// * `InvalidResponse` - if response isn't UTF-8 encoded
     /// * `Server` - if server response contains error message
@@ -82,7 +82,7 @@ impl Authorized {
     pub fn delete_record(&mut self, resource: &str) -> Result<()> {
         Self::check_resource(resource)?;
 
-        let request = format!("delete_record {} ", resource);
+        let request = format!("delete_record {}", resource);
         self.connector.send_request(request)?;
 
         self.check_response()
@@ -136,10 +136,10 @@ impl Authorized {
     ///
     /// # Errors
     ///
-    /// Returns `InvalidRecord` if `resource` is empty
+    /// Returns `InvalidResource` if `resource` is empty
     fn check_resource(resource: &str) -> Result<()> {
         if let true = resource.is_empty() {
-            return Err(Error::InvalidRecord {
+            return Err(Error::InvalidResource {
                 mes: String::from("record's resource can't be empty"),
             });
         }
@@ -163,7 +163,7 @@ mod tests {
     use mockall::predicate::*;
     use std::io;
 
-    /// Tests for `Authorized::delete_me()`
+    /// Tests for `Authorized::add_record()`
     mod add_record {
         use super::*;
 
@@ -179,7 +179,7 @@ mod tests {
         }
 
         #[test]
-        fn test_invalid_record() {
+        fn test_invalid_resource() {
             let record = Record {
                 resource: String::default(),
                 password: String::from("secret"),
@@ -191,7 +191,7 @@ mod tests {
             let mut authorized = Authorized::new(connector);
             assert!(matches!(
                 authorized.add_record(&record),
-                Err(Error::InvalidRecord { .. })
+                Err(Error::InvalidResource { .. })
             ));
         }
 
@@ -235,6 +235,68 @@ mod tests {
         }
     }
 
+    /// Tests for `Authorized::delete_record()`
+    mod delete_record {
+        use super::*;
+
+        #[test]
+        fn test_ok() {
+            let resource = "test_resource";
+
+            let mut connector = Connector::default();
+            expect_all_ok(&mut connector, String::from("delete_record test_resource"));
+
+            let mut authorized = Authorized::new(connector);
+            authorized.delete_record(resource).unwrap();
+        }
+
+        #[test]
+        fn test_invalid_resource() {
+            let resource = "";
+
+            let connector = Connector::default();
+
+            let mut authorized = Authorized::new(connector);
+            assert!(matches!(
+                authorized.delete_record(resource),
+                Err(Error::InvalidResource { .. })
+            ));
+        }
+
+        #[test]
+        fn test_cant_send_request() {
+            let resource = "test_resource";
+
+            let mut connector = Connector::default();
+            expect_failing_send_request(
+                &mut connector,
+                String::from("delete_record test_resource"),
+            );
+
+            let mut authorized = Authorized::new(connector);
+            assert!(matches!(
+                authorized.delete_record(resource),
+                Err(Error::Io(_))
+            ));
+        }
+
+        #[test]
+        fn test_cant_recv_response() {
+            let resource = "test_resource";
+
+            let mut connector = Connector::default();
+            expect_failing_recv_response(
+                &mut connector,
+                String::from("delete_record test_resource"),
+            );
+
+            let mut authorized = Authorized::new(connector);
+            assert!(matches!(
+                authorized.delete_record(resource),
+                Err(Error::InvalidResponse(_))
+            ));
+        }
+    }
     /// Tests for `Authorized::delete_me()`
     mod delete_me {
         use super::*;
