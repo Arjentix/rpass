@@ -135,7 +135,7 @@ impl Authorized {
 
         Ok(Record {
             resource,
-            ..Record::from_str(&response)
+            ..Record::from_str(&response)?
         })
     }
 
