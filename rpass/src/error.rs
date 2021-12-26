@@ -1,5 +1,6 @@
 use crate::{
     key::Key,
+    record::Record,
     session::{Authorized, Unauthorized},
 };
 use std::str::FromStr;
@@ -24,6 +25,9 @@ pub enum Error {
 
     #[error("invalid resource: {mes}")]
     InvalidResource { mes: String },
+
+    #[error("can't parse record: {0}")]
+    CantParseRecord(#[from] <Record as FromStr>::Err),
 
     #[error("server error: {mes}")]
     Server { mes: String },

@@ -1,17 +1,21 @@
 use super::{Connector, DeleteMeError, Error, Record, Result, Unauthorized};
+use std::cell::RefCell;
+use std::str::FromStr;
 
 /// Authorized session
 ///
 /// Represents state when session is associated with user
 #[derive(Debug)]
 pub struct Authorized {
-    connector: Connector,
+    connector: RefCell<Connector>,
 }
 
 impl Authorized {
     /// Creates new Authorized with `connector`
     pub(super) fn new(connector: Connector) -> Self {
-        Authorized { connector }
+        Authorized {
+            connector: RefCell::new(connector),
+        }
     }
 
     /// Add `record` to the storage
@@ -47,7 +51,7 @@ impl Authorized {
         Self::check_resource(&record.resource)?;
 
         let request = format!("new_record {} \"{}\"", record.resource, record.to_string());
-        self.connector.send_request(request)?;
+        self.connector.get_mut().send_request(request)?;
 
         self.check_response()
     }
@@ -63,29 +67,76 @@ impl Authorized {
     ///
     /// # Example
     ///
-    /// ```no_run
+    /// ```
     /// use rpass::session::Authorized;
     /// use std::io;
     /// use std::error::Error;
     ///
     /// fn read_resource_and_delete(session: &mut Authorized) -> Result<(), Box<dyn Error>> {
-    /// let resource = {
-    ///     let mut buffer = String::new();
-    ///     let mut stdin = io::stdin();
-    ///     stdin.read_line(&mut buffer)?;
-    ///     buffer
-    /// };
+    ///     let resource = {
+    ///         let mut buffer = String::new();
+    ///         let mut stdin = io::stdin();
+    ///         stdin.read_line(&mut buffer)?;
+    ///         buffer
+    ///     };
     ///
-    /// session.delete_record(&resource).map_err(|err| err.into())
+    ///     session.delete_record(&resource).map_err(|err| err.into())
     /// }
     /// ```
     pub fn delete_record(&mut self, resource: &str) -> Result<()> {
         Self::check_resource(resource)?;
 
         let request = format!("delete_record {}", resource);
-        self.connector.send_request(request)?;
+        self.connector.get_mut().send_request(request)?;
 
         self.check_response()
+    }
+
+    /// Show record with `resource` name
+    ///
+    /// # Errors
+    ///
+    /// * `InvalidResource` - if `resource` is empty
+    /// * `Io` - if can't write or read bytes to/from server
+    /// * `InvalidResponse` - if response isn't UTF-8 encoded
+    /// * `Server` - if server response contains error message
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rpass::session::Authorized;
+    /// use std::io;
+    /// use std::error::Error;
+    ///
+    /// fn read_resource_and_show_record(session: &Authorized) -> Result<(), Box<dyn Error>> {
+    ///     let resource = {
+    ///         let mut buffer = String::new();
+    ///         let mut stdin = io::stdin();
+    ///         stdin.read_line(&mut buffer)?;
+    ///         buffer
+    ///     };
+    ///
+    ///     let record = session.get_record(resource)?;
+    ///     println!("{}", record.to_string());
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn get_record(&self, resource: String) -> Result<Record> {
+        Self::check_resource(&resource)?;
+
+        let request = format!("show_record {}", resource);
+        let mut connector = self.connector.borrow_mut();
+        connector.send_request(request)?;
+
+        let response = connector.recv_response()?;
+        if response.starts_with("Error") {
+            return Err(Error::Server { mes: response });
+        }
+
+        Ok(Record {
+            resource,
+            ..Record::from_str(&response)
+        })
     }
 
     /// Deletes all information about user the session is associated with
@@ -116,7 +167,7 @@ impl Authorized {
     /// ```
     pub fn delete_me(mut self) -> std::result::Result<Unauthorized, DeleteMeError> {
         match self.try_delete_me() {
-            Ok(()) => Ok(Unauthorized::with_connector(self.connector)),
+            Ok(()) => Ok(Unauthorized::with_connector(self.connector.into_inner())),
             Err(err) => Err(DeleteMeError {
                 source: err,
                 authorized: self,
@@ -128,7 +179,9 @@ impl Authorized {
     ///
     /// See [`Authorized::login()`] for details
     fn try_delete_me(&mut self) -> Result<()> {
-        self.connector.send_request(String::from("delete_me"))?;
+        self.connector
+            .get_mut()
+            .send_request(String::from("delete_me"))?;
         self.check_response()
     }
 
@@ -149,8 +202,8 @@ impl Authorized {
 
     /// Checks if server response contains *"Ok"* value.
     /// If not then returns `Error::Server`
-    fn check_response(&mut self) -> Result<()> {
-        match self.connector.recv_response()? {
+    fn check_response(&self) -> Result<()> {
+        match self.connector.borrow_mut().recv_response()? {
             ok if ok == "Ok" => Ok(()),
             mes => Err(Error::Server { mes }),
         }
