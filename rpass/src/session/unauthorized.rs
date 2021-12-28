@@ -38,6 +38,7 @@ impl Unauthorized {
     ///
     /// * `Io` - if can't write or read bytes to/from server
     /// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
+    /// * `UnexpectedResponse` - if server responses with unexpected message
     /// * `Server` - if server response contains error message
     ///
     /// # Example
@@ -73,6 +74,7 @@ impl Unauthorized {
     ///
     /// * `Io` - if can't write or read bytes to/from server
     /// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
+    /// * `UnexpectedResponse` - if server responses with unexpected message
     /// * `Server` - if server response contains error message
     ///
     /// # Example
@@ -203,6 +205,31 @@ mod tests {
             assert!(matches!(
                 unauthorized.register(TEST_USER, &pub_key),
                 Err(Error::InvalidResponseEncoding(_))
+            ));
+        }
+
+        #[test]
+        fn test_unexpected_response() {
+            let (_, pub_key, _) = generate_keys();
+            let mut connector = Connector::default();
+            connector
+                .expect_send_request()
+                .with(eq(format!(
+                    "register {} {}",
+                    TEST_USER,
+                    pub_key.to_string()
+                )))
+                .times(1)
+                .returning(|_| Ok(()));
+            connector
+                .expect_recv_response()
+                .times(1)
+                .returning(|| Ok(String::from("Registered")));
+
+            let mut unauthorized = Unauthorized { connector };
+            assert!(matches!(
+                unauthorized.register(TEST_USER, &pub_key),
+                Err(Error::UnexpectedResponse { response }) if response == "Registered"
             ));
         }
     }
@@ -418,6 +445,41 @@ mod tests {
                     source: Error::Server { mes },
                     ..
                 }) if mes == "invalid confirmation string"
+            ));
+        }
+
+        #[test]
+        fn test_unexpected_confirm_login_response() {
+            let (server_pub_key, pub_key, sec_key) = generate_keys();
+            let send_request_arg_validator = {
+                let expected_confirmation =
+                    build_expected_logging_confirmation(&server_pub_key, &sec_key);
+                build_send_request_arg_validator_for(expected_confirmation)
+            };
+            let mut recv_response_call_counter = 0u8;
+
+            let mut connector = Connector::default();
+            expect_send_request(&mut connector, send_request_arg_validator);
+            expect_server_pub_key(&mut connector, server_pub_key);
+            connector
+                .expect_recv_response()
+                .times(2)
+                .returning(move || {
+                    if recv_response_call_counter == 0 {
+                        recv_response_call_counter += 1;
+                        return Ok(pub_key.encrypt(CONFIRMATION));
+                    }
+
+                    Ok(String::from("Successfully logged in"))
+                });
+
+            let unauthorized = Unauthorized { connector };
+            assert!(matches!(
+                unauthorized.login(TEST_USER, &sec_key),
+                Err(LoginError {
+                    source: Error::UnexpectedResponse { response},
+                    ..
+                }) if response == "Successfully logged in"
             ));
         }
 

@@ -266,6 +266,25 @@ mod tests {
             ));
         }
 
+        #[test]
+        fn test_unexpected_response() {
+            let record = build_record();
+
+            let mut connector = Connector::default();
+            expect_ok_send_request(&mut connector, build_request(&record));
+            connector
+                .expect_recv_response()
+                .times(1)
+                .returning(|| Ok(String::from("Record successfully added")));
+
+            let mut authorized = Authorized::new(connector);
+            assert!(matches!(
+                authorized.add_record(&record),
+                Err(Error::UnexpectedResponse { response })
+                    if response == "Record successfully added"
+            ));
+        }
+
         /// Builds test record
         fn build_record() -> Record {
             Record {
@@ -342,6 +361,25 @@ mod tests {
                 Err(Error::InvalidResponseEncoding(_))
             ));
         }
+
+        #[test]
+        fn test_unexpected_response() {
+            let resource = "test_resource";
+
+            let mut connector = Connector::default();
+            expect_ok_send_request(&mut connector, String::from("delete_record test_resource"));
+            connector
+                .expect_recv_response()
+                .times(1)
+                .returning(|| Ok(String::from("Record successfully deleted")));
+
+            let mut authorized = Authorized::new(connector);
+            assert!(matches!(
+                authorized.delete_record(resource),
+                Err(Error::UnexpectedResponse { response })
+                    if response == "Record successfully deleted"
+            ));
+        }
     }
 
     /// Tests for `Authorized::get_record()`
@@ -360,11 +398,7 @@ mod tests {
             let record_str = record.to_string();
 
             let mut connector = Connector::default();
-            connector
-                .expect_send_request()
-                .with(eq(format!("show_record {}", resource)))
-                .times(1)
-                .returning(|_| Ok(()));
+            expect_ok_send_request(&mut connector, format!("show_record {}", resource));
             connector
                 .expect_recv_response()
                 .times(1)
@@ -417,11 +451,7 @@ mod tests {
             let resource = String::from("test_resource");
 
             let mut connector = Connector::default();
-            connector
-                .expect_send_request()
-                .with(eq(format!("show_record {}", resource)))
-                .times(1)
-                .returning(|_| Ok(()));
+            expect_ok_send_request(&mut connector, format!("show_record {}", resource));
             connector
                 .expect_recv_response()
                 .times(1)
@@ -477,20 +507,44 @@ mod tests {
                 })
             ));
         }
+
+        #[test]
+        fn test_unexpected_response() {
+            let mut connector = Connector::default();
+            expect_ok_send_request(&mut connector, String::from("delete_me"));
+            connector
+                .expect_recv_response()
+                .times(1)
+                .returning(|| Ok(String::from("You were successfully deleted")));
+
+            let authorized = Authorized::new(connector);
+            assert!(matches!(
+                authorized.delete_me(),
+                Err(DeleteMeError {
+                    source: Error::UnexpectedResponse { response },
+                    ..
+                }) if response == "You were successfully deleted"
+            ));
+        }
     }
 
     /// Expect `connector` to have successful `send_request()` with `request` as expected request
     /// and successful `recv_response()`
     fn expect_all_ok(connector: &mut Connector, request: String) {
+        expect_ok_send_request(connector, request);
+        connector
+            .expect_recv_response()
+            .times(1)
+            .returning(|| Ok(String::from("Ok")));
+    }
+
+    /// Expect `connector` to have successful `send_request()` with `request` as expected request
+    fn expect_ok_send_request(connector: &mut Connector, request: String) {
         connector
             .expect_send_request()
             .with(eq(request))
             .times(1)
             .returning(|_| Ok(()));
-        connector
-            .expect_recv_response()
-            .times(1)
-            .returning(|| Ok(String::from("Ok")));
     }
 
     /// Expect `connector` to accept `request` into `send_request` and then return error
@@ -505,11 +559,7 @@ mod tests {
     /// Expect `connector` to have successful `send_request()` with `request` as expected request
     /// and `recv_response()` returning error
     fn expect_failing_recv_response(connector: &mut Connector, request: String) {
-        connector
-            .expect_send_request()
-            .with(eq(request))
-            .times(1)
-            .returning(|_| Ok(()));
+        expect_ok_send_request(connector, request);
         connector.expect_recv_response().times(1).returning(|| {
             Err(Error::InvalidResponseEncoding(
                 String::from_utf8(vec![0, 159]).unwrap_err(),
