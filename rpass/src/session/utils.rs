@@ -5,7 +5,7 @@ use super::{Connector, Error, Result};
 /// # Errors
 ///
 /// * `Io` - if can't write or read bytes to/from server
-/// * `InvalidResponse` - if response isn't UTF-8 encoded
+/// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
 /// * `Server` - if server response contains error message
 pub fn read_good_response(connector: &mut Connector) -> Result<String> {
     let response = connector.recv_response()?;
@@ -25,7 +25,7 @@ pub fn read_good_response(connector: &mut Connector) -> Result<String> {
 /// # Errors
 ///
 /// * `Io` - if can't write or read bytes to/from server
-/// * `InvalidResponse` - if response isn't UTF-8 encoded
+/// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
 /// * `Server` - if server response contains error message
 /// * `UnexpectedResponse` - if response isn't *"Ok"* or error
 pub fn read_ok_response(connector: &mut Connector) -> Result<()> {

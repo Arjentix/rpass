@@ -30,7 +30,7 @@ impl Connector {
     /// * `Io` - if can't clone `stream` or some error during writing/reading
     /// bytes to/from server
     /// * `InvalidKey` - if can't parse server key
-    /// * `InvalidResponse` - if response isn't UTF-8 encoded
+    /// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
     pub fn new(stream: TcpStream) -> Result<Self> {
         let mut buf_stream_reader = BufReader::new(stream.try_clone()?);
         let server_pub_key = Self::read_server_pub_key(&mut buf_stream_reader)?;
@@ -48,7 +48,7 @@ impl Connector {
     /// # Errors
     ///
     /// * `Io` - if can't retrieve bytes from server
-    /// * `InvalidResponse` - if response isn't UTF-8 encoded
+    /// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
     pub fn recv_response(&mut self) -> Result<String> {
         read_response(&mut self.buf_stream_reader)
     }
@@ -94,7 +94,7 @@ impl Drop for Connector {
 /// # Errors
 ///
 /// * `Io` - if can't read bytes from `reader`
-/// * `InvalidResponse` - if response isn't UTF-8 encoded
+/// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
 fn read_response<R: BufRead>(mut reader: R) -> Result<String> {
     let mut buf = vec![];
     let size = reader.read_until(EOT, &mut buf)?;
@@ -196,7 +196,7 @@ mod tests {
         let mut reader = Cursor::new([0, 1, 128, EOT]);
         assert!(matches!(
             read_response(&mut reader),
-            Err(Error::InvalidResponse(_))
+            Err(Error::InvalidResponseEncoding(_))
         ));
     }
 

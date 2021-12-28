@@ -24,7 +24,7 @@ impl Authorized {
     ///
     /// * `InvalidResource` - if record's resource is empty
     /// * `Io` - if can't write or read bytes to/from server
-    /// * `InvalidResponse` - if response isn't UTF-8 encoded
+    /// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
     /// * `Server` - if server response contains error message
     ///
     /// # Example
@@ -62,7 +62,7 @@ impl Authorized {
     ///
     /// * `InvalidResource` - if `resource` is empty
     /// * `Io` - if can't write or read bytes to/from server
-    /// * `InvalidResponse` - if response isn't UTF-8 encoded
+    /// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
     /// * `Server` - if server response contains error message
     ///
     /// # Example
@@ -98,7 +98,7 @@ impl Authorized {
     ///
     /// * `InvalidResource` - if `resource` is empty
     /// * `Io` - if can't write or read bytes to/from server
-    /// * `InvalidResponse` - if response isn't UTF-8 encoded
+    /// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
     /// * `Server` - if server response contains error message
     ///
     /// # Example
@@ -146,7 +146,7 @@ impl Authorized {
     /// `DeleteMeError::source` field can have the next values:
     ///
     /// * `Io` - if can't write or read bytes to/from server
-    /// * `InvalidResponse` - if response isn't UTF-8 encoded
+    /// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
     /// * `Server` - if server response contains error message
     ///
     /// # Example
@@ -262,7 +262,7 @@ mod tests {
             let mut authorized = Authorized::new(connector);
             assert!(matches!(
                 authorized.add_record(&record),
-                Err(Error::InvalidResponse(_))
+                Err(Error::InvalidResponseEncoding(_))
             ));
         }
 
@@ -339,7 +339,7 @@ mod tests {
             let mut authorized = Authorized::new(connector);
             assert!(matches!(
                 authorized.delete_record(resource),
-                Err(Error::InvalidResponse(_))
+                Err(Error::InvalidResponseEncoding(_))
             ));
         }
     }
@@ -408,7 +408,7 @@ mod tests {
             let authorized = Authorized::new(connector);
             assert!(matches!(
                 authorized.get_record(resource),
-                Err(Error::InvalidResponse(_))
+                Err(Error::InvalidResponseEncoding(_))
             ));
         }
 
@@ -472,7 +472,7 @@ mod tests {
             assert!(matches!(
                 authorized.delete_me(),
                 Err(DeleteMeError {
-                    source: Error::InvalidResponse(_),
+                    source: Error::InvalidResponseEncoding(_),
                     ..
                 })
             ));
@@ -511,7 +511,7 @@ mod tests {
             .times(1)
             .returning(|_| Ok(()));
         connector.expect_recv_response().times(1).returning(|| {
-            Err(Error::InvalidResponse(
+            Err(Error::InvalidResponseEncoding(
                 String::from_utf8(vec![0, 159]).unwrap_err(),
             ))
         });

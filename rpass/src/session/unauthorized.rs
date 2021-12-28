@@ -19,7 +19,7 @@ impl Unauthorized {
     ///
     /// * `CantConnectToTheServer` - if can't connect to the server
     /// * `Io` - if can't read bytes from server
-    /// * `InvalidResponse` - if response isn't UTF-8 encoded
+    /// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
     /// * `InvalidKey` - if can't parse server key
     pub fn new<A: ToSocketAddrs>(addr: A) -> Result<Self> {
         let stream = TcpStream::connect(addr).map_err(|_| Error::CantConnectToTheServer)?;
@@ -37,7 +37,7 @@ impl Unauthorized {
     /// # Errors
     ///
     /// * `Io` - if can't write or read bytes to/from server
-    /// * `InvalidResponse` - if response isn't UTF-8 encoded
+    /// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
     /// * `Server` - if server response contains error message
     ///
     /// # Example
@@ -72,7 +72,7 @@ impl Unauthorized {
     /// `LoginError::source` field can have the next values:
     ///
     /// * `Io` - if can't write or read bytes to/from server
-    /// * `InvalidResponse` - if response isn't UTF-8 encoded
+    /// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
     /// * `Server` - if server response contains error message
     ///
     /// # Example
@@ -194,7 +194,7 @@ mod tests {
                 .times(1)
                 .returning(|_| Ok(()));
             connector.expect_recv_response().times(1).returning(|| {
-                Err(Error::InvalidResponse(
+                Err(Error::InvalidResponseEncoding(
                     String::from_utf8(vec![0, 159]).unwrap_err(),
                 ))
             });
@@ -202,7 +202,7 @@ mod tests {
             let mut unauthorized = Unauthorized { connector };
             assert!(matches!(
                 unauthorized.register(TEST_USER, &pub_key),
-                Err(Error::InvalidResponse(_))
+                Err(Error::InvalidResponseEncoding(_))
             ));
         }
     }
@@ -267,7 +267,7 @@ mod tests {
                 .times(1)
                 .returning(|_| Ok(()));
             connector.expect_recv_response().times(1).returning(|| {
-                Err(Error::InvalidResponse(
+                Err(Error::InvalidResponseEncoding(
                     String::from_utf8(vec![0, 159]).unwrap_err(),
                 ))
             });
@@ -276,7 +276,7 @@ mod tests {
             assert!(matches!(
                 unauthorized.login(TEST_USER, &sec_key),
                 Err(LoginError {
-                    source: Error::InvalidResponse(_),
+                    source: Error::InvalidResponseEncoding(_),
                     ..
                 })
             ));

@@ -14,8 +14,8 @@ pub enum Error {
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
 
-    #[error("invalid response")]
-    InvalidResponse(#[from] FromUtf8Error),
+    #[error("invalid response encoding")]
+    InvalidResponseEncoding(#[from] FromUtf8Error),
 
     #[error("invalid request: {mes}")]
     InvalidRequest { mes: String },
