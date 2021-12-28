@@ -36,6 +36,11 @@ pub struct RequestDispatcher {
 }
 
 impl RequestDispatcher {
+    /// Creates new `RequestDispatcher`
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn add_callback<C>(&mut self, command: Cow<'static, str>, callback: C) -> &mut Self
     where
         C: Fn(&mut Session, ArgIter) -> Result<String> + Send + Sync + 'static,

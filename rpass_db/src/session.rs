@@ -29,6 +29,11 @@ pub struct Authorized {
 
 #[allow(dead_code)]
 impl Session {
+    /// Creates new `Session` initialized with `Unauthorized` variant
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Checks if session is unauthorized
     pub fn is_unauthorized(&self) -> bool {
         matches!(self, Session::Unauthorized(_))
@@ -42,6 +47,13 @@ impl Session {
     /// Checks if session is ended
     pub fn is_ended(&self) -> bool {
         matches!(self, Session::Ended)
+    }
+}
+
+impl Unauthorized {
+    /// Creates new `Unauthorized` with all fields default-initialized
+    pub fn new() -> Self {
+        Self::default()
     }
 }
 

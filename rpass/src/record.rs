@@ -10,6 +10,13 @@ pub struct Record {
     pub notes: String,    // Additional notes, encrypted with user public key
 }
 
+impl Record {
+    /// Creates new `Record` with all fields default-initialized
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum ParseRecordError {
     #[error("empty string")]
@@ -45,6 +52,14 @@ impl ToString for Record {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_new() {
+        let record = Record::new();
+        assert_eq!(record.resource, "");
+        assert_eq!(record.password, "");
+        assert_eq!(record.notes, "");
+    }
 
     #[test]
     fn test_from_str() {
