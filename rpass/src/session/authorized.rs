@@ -159,7 +159,7 @@ impl Authorized {
     /// fn print_all_records(session: &Authorized) -> Result<(), Box<dyn Error>> {
     ///     let records = session.get_records_list()?;
     ///     for record in records.into_iter().enumerate() {
-    ///         println!("{}: {}", record.0, record.1);
+    ///         println!("{}: {}", record.0 + 1, record.1);
     ///     }
     ///     Ok(())
     /// }
