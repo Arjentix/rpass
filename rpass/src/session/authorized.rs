@@ -26,6 +26,7 @@ impl Authorized {
     /// * `Io` - if can't write or read bytes to/from server
     /// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
     /// * `Server` - if server response contains error message
+    /// * `UnexpectedResponse` - if server responses with unexpected message
     ///
     /// # Example
     ///
@@ -64,6 +65,7 @@ impl Authorized {
     /// * `Io` - if can't write or read bytes to/from server
     /// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
     /// * `Server` - if server response contains error message
+    /// * `UnexpectedResponse` - if server responses with unexpected message
     ///
     /// # Example
     ///
@@ -92,7 +94,7 @@ impl Authorized {
         self.read_ok_response()
     }
 
-    /// Show record with `resource` name
+    /// Get record with `resource` name
     ///
     /// # Errors
     ///
@@ -100,6 +102,7 @@ impl Authorized {
     /// * `Io` - if can't write or read bytes to/from server
     /// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
     /// * `Server` - if server response contains error message
+    /// * `UnexpectedResponse` - if server responses with unexpected message
     ///
     /// # Example
     ///
@@ -124,16 +127,56 @@ impl Authorized {
     pub fn get_record(&self, resource: String) -> Result<Record> {
         Self::check_resource(&resource)?;
 
-        let request = format!("show_record {}", resource);
-        let mut connector = self.connector.borrow_mut();
-        connector.send_request(request)?;
-
-        let response = utils::read_good_response(&mut connector)?;
+        let response = {
+            let request = format!("show_record {}", resource);
+            let mut connector = self.connector.borrow_mut();
+            connector.send_request(request)?;
+            utils::read_good_response(&mut connector)?
+        };
 
         Ok(Record {
             resource,
             ..Record::from_str(&response)?
         })
+    }
+
+    /// Get list of all records names
+    ///
+    /// # Errors
+    ///
+    /// * `Io` - if can't write or read bytes to/from server
+    /// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
+    /// * `Server` - if server response contains error message
+    /// * `UnexpectedResponse` - if server responses with unexpected message
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rpass::session::Authorized;
+    /// use std::io;
+    /// use std::error::Error;
+    ///
+    /// fn print_all_records(session: &Authorized) -> Result<(), Box<dyn Error>> {
+    ///     let records = session.get_records_list()?;
+    ///     for record in records.into_iter().enumerate() {
+    ///         println!("{}: {}", record.0, record.1);
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn get_records_list(&self) -> Result<Vec<String>> {
+        let response = {
+            let mut connector = self.connector.borrow_mut();
+            connector.send_request(String::from("list_records"))?;
+            utils::read_good_response(&mut connector)?
+        };
+
+        if response == "No records yet" {
+            return Ok(vec![]);
+        }
+
+        let records = response.split('\n').map(|s| s.to_owned()).collect();
+        Ok(records)
     }
 
     /// Deletes all information about user the session is associated with
