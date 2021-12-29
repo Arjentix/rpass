@@ -20,7 +20,7 @@ This project contains three crates:
 |     New record      |  ✅   |  ✅   |      |
 |    Delete record    |  ✅   |  ✅   |      |
 |     Show record     |  ✅   |  ✅   |      |
-| List user's records |  ✅   |      |      |
+| List user's records |  ✅   |  ✅   |      |
 |  Dump user's data   |      |      |      |
 | Password generation |  —   |      |      |
 |   SSL encryption    |      |      |      |
