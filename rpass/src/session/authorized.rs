@@ -507,7 +507,23 @@ mod tests {
             ));
         }
 
-        // Test when can't parse record
+        #[test]
+        fn test_wrong_record_format() {
+            let resource = String::from("test_resource");
+
+            let mut connector = Connector::default();
+            expect_ok_send_request(&mut connector, format!("show_record {}", resource));
+            connector
+                .expect_recv_response()
+                .times(1)
+                .returning(|| Ok(String::from("secret, notes")));
+
+            let authorized = Authorized::new(connector);
+            assert!(matches!(
+                authorized.get_record(resource),
+                Err(Error::CantParseRecord(_))
+            ));
+        }
     }
 
     /// Tests for `Authorized::get_records_list()`
