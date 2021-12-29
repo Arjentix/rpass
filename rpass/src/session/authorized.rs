@@ -506,6 +506,81 @@ mod tests {
                 Err(Error::Server { mes }) if mes == "no such record"
             ));
         }
+
+        // Test when can't parse record
+    }
+
+    /// Tests for `Authorized::get_records_list()`
+    mod get_records_list {
+        use super::*;
+
+        #[test]
+        fn test_ok() {
+            let mut connector = Connector::default();
+            expect_ok_send_request(&mut connector, String::from("list_records"));
+            connector
+                .expect_recv_response()
+                .times(1)
+                .return_once(move || Ok(String::from("example.com\ntest.ru\nyoutube.com")));
+
+            let expected_list: Vec<String> = ["example.com", "test.ru", "youtube.com"]
+                .into_iter()
+                .map(ToOwned::to_owned)
+                .collect();
+
+            let authorized = Authorized::new(connector);
+            assert_eq!(authorized.get_records_list().unwrap(), expected_list);
+        }
+
+        #[test]
+        fn test_no_records() {
+            let mut connector = Connector::default();
+            expect_ok_send_request(&mut connector, String::from("list_records"));
+            connector
+                .expect_recv_response()
+                .times(1)
+                .return_once(move || Ok(String::from("No records yet")));
+
+            let authorized = Authorized::new(connector);
+            assert!(authorized.get_records_list().unwrap().is_empty());
+        }
+
+        #[test]
+        fn test_cant_send_request() {
+            let mut connector = Connector::default();
+            expect_failing_send_request(&mut connector, String::from("list_records"));
+
+            let authorized = Authorized::new(connector);
+            assert!(matches!(authorized.get_records_list(), Err(Error::Io(_))));
+        }
+
+        #[test]
+        fn test_cant_recv_response() {
+            let mut connector = Connector::default();
+            expect_failing_recv_response(&mut connector, String::from("list_records"));
+
+            let authorized = Authorized::new(connector);
+            assert!(matches!(
+                authorized.get_records_list(),
+                Err(Error::InvalidResponseEncoding(_))
+            ));
+        }
+
+        #[test]
+        fn test_error_from_server() {
+            let mut connector = Connector::default();
+            expect_ok_send_request(&mut connector, String::from("list_records"));
+            connector
+                .expect_recv_response()
+                .times(1)
+                .returning(|| Ok(String::from("Error: some internal error")));
+
+            let authorized = Authorized::new(connector);
+            assert!(matches!(
+                authorized.get_records_list(),
+                Err(Error::Server { mes }) if mes == "some internal error"
+            ));
+        }
     }
 
     /// Tests for `Authorized::delete_me()`
