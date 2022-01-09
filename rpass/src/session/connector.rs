@@ -1,8 +1,11 @@
-pub use std::net::TcpStream;
-
 use crate::key::Key;
 use crate::{Error, Result};
-use std::io::{BufRead, BufReader, Write};
+
+use tokio::{
+    io::{AsyncBufRead, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader},
+    net::{tcp, TcpStream},
+};
+
 use std::str::FromStr;
 
 #[cfg(test)]
@@ -11,15 +14,16 @@ use mockall::automock;
 /// Connector that interacts with *rpass_db*
 #[derive(Debug)]
 pub struct Connector {
-    stream: TcpStream,
-    buf_stream_reader: BufReader<TcpStream>,
+    stream: Box<TcpStream>,
+    reader: BufReader<tcp::ReadHalf<'static>>,
+    writer: tcp::WriteHalf<'static>,
     server_pub_key: Key,
 }
 
 /// End of transmission character
 const EOT: u8 = 0x04;
 
-#[cfg_attr(test, automock, allow(dead_code))]
+#[cfg_attr(test, automock)]
 impl Connector {
     /// Creates new Connector
     ///
@@ -31,12 +35,15 @@ impl Connector {
     /// bytes to/from server
     /// * `InvalidKey` - if can't parse server key
     /// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
-    pub fn new(stream: TcpStream) -> Result<Self> {
-        let mut buf_stream_reader = BufReader::new(stream.try_clone()?);
-        let server_pub_key = Self::read_server_pub_key(&mut buf_stream_reader)?;
+    pub async fn new(mut stream: Box<TcpStream>) -> Result<Self> {
+        let stream_ptr: *mut TcpStream = &mut *stream;
+        let (reader, writer) = unsafe { <*mut TcpStream>::as_mut(stream_ptr).unwrap().split() };
+        let mut reader = BufReader::new(reader);
+        let server_pub_key = Self::read_server_pub_key(&mut reader).await?;
         Ok(Connector {
             stream,
-            buf_stream_reader,
+            reader,
+            writer,
             server_pub_key,
         })
     }
@@ -49,8 +56,8 @@ impl Connector {
     ///
     /// * `Io` - if can't retrieve bytes from server
     /// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
-    pub fn recv_response(&mut self) -> Result<String> {
-        read_response(&mut self.buf_stream_reader)
+    pub async fn recv_response(&mut self) -> Result<String> {
+        read_response(&mut self.reader).await
     }
 
     /// Sends `request` to the server
@@ -59,8 +66,8 @@ impl Connector {
     ///
     /// * `Io` - if can't send bytes to the server
     /// * `InvalidRequest` - if `request` contains EOT byte
-    pub fn send_request(&mut self, request: String) -> Result<()> {
-        write_request(&mut self.stream, request)
+    pub async fn send_request(&mut self, request: String) -> Result<()> {
+        write_request(&mut self.writer, request).await
     }
 
     /// Reads server public key from `reader`
@@ -69,8 +76,8 @@ impl Connector {
     ///
     /// * See [`read_response()`]
     /// * `InvalidKey` - if can't parse server key
-    fn read_server_pub_key<R: BufRead + 'static>(reader: &mut R) -> Result<Key> {
-        let key = read_response(reader)?;
+    async fn read_server_pub_key<R: AsyncBufRead + Unpin + 'static>(reader: &mut R) -> Result<Key> {
+        let key = read_response(reader).await?;
         Key::from_str(&key).map_err(|err| err.into())
     }
 
@@ -83,7 +90,9 @@ impl Connector {
 /// Gracefully disconnects from server
 impl Drop for Connector {
     fn drop(&mut self) {
-        let _ = self.send_request(String::from("quit"));
+        async {
+            let _ = self.send_request(String::from("quit")).await;
+        };
     }
 }
 
@@ -95,9 +104,9 @@ impl Drop for Connector {
 ///
 /// * `Io` - if can't read bytes from `reader`
 /// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
-fn read_response<R: BufRead>(mut reader: R) -> Result<String> {
+async fn read_response<R: AsyncBufRead + Unpin>(mut reader: R) -> Result<String> {
     let mut buf = vec![];
-    let size = reader.read_until(EOT, &mut buf)?;
+    let size = reader.read_until(EOT, &mut buf).await?;
     if size == 0 {
         return Ok(String::new());
     }
@@ -120,9 +129,10 @@ fn read_response<R: BufRead>(mut reader: R) -> Result<String> {
 ///
 /// * `Io` - if can't send bytes to `writer`
 /// * `InvalidRequest` - if `request` contains EOT byte
-fn write_request<W: Write>(mut writer: W, request: String) -> Result<()> {
+async fn write_request<W: AsyncWrite + Unpin>(mut writer: W, request: String) -> Result<()> {
     writer
         .write_all(&make_request(request)?)
+        .await
         .map_err(|err| err.into())
 }
 
@@ -147,61 +157,74 @@ fn make_request(mut request: String) -> Result<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::{Cursor, Read};
+
+    use std::io::Cursor;
+    use std::task::Poll;
+    use tokio::io::AsyncRead;
 
     /// Reader that fails to read
     struct TestReader;
 
-    impl Read for TestReader {
-        fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
-            Err(std::io::Error::new(std::io::ErrorKind::Other, "read error"))
+    impl AsyncRead for TestReader {
+        fn poll_read(
+            self: std::pin::Pin<&mut Self>,
+            cx: &mut std::task::Context<'_>,
+            buf: &mut tokio::io::ReadBuf<'_>,
+        ) -> Poll<std::io::Result<()>> {
+            Poll::Ready(Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "read error",
+            )))
         }
     }
 
-    #[test]
-    fn test_read_response_basic() {
+    #[tokio::test]
+    async fn test_read_response_basic() {
         let mut reader = Cursor::new("response");
-        assert_eq!(read_response(&mut reader).unwrap(), "response");
+        assert_eq!(read_response(&mut reader).await.unwrap(), "response");
     }
 
-    #[test]
-    fn test_read_response_empty() {
+    #[tokio::test]
+    async fn test_read_response_empty() {
         let mut reader = Cursor::new("");
-        assert_eq!(read_response(&mut reader).unwrap(), "");
+        assert_eq!(read_response(&mut reader).await.unwrap(), "");
     }
 
-    #[test]
-    fn test_read_response_with_eot_at_the_end() {
+    #[tokio::test]
+    async fn test_read_response_with_eot_at_the_end() {
         let mut response = String::from("response").into_bytes();
         response.push(EOT);
 
         let mut reader = Cursor::new(response);
-        assert_eq!(read_response(&mut reader).unwrap(), "response");
+        assert_eq!(read_response(&mut reader).await.unwrap(), "response");
     }
 
-    #[test]
-    fn test_read_response_carriage_return() {
+    #[tokio::test]
+    async fn test_read_response_carriage_return() {
         let mut reader = Cursor::new("response\r\n");
-        assert_eq!(read_response(&mut reader).unwrap(), "response");
+        assert_eq!(read_response(&mut reader).await.unwrap(), "response");
     }
 
-    #[test]
-    fn test_read_response_io_error() {
+    #[tokio::test]
+    async fn test_read_response_io_error() {
         let mut reader = BufReader::new(TestReader {});
-        assert!(matches!(read_response(&mut reader), Err(Error::Io(_))));
+        assert!(matches!(
+            read_response(&mut reader).await,
+            Err(Error::Io(_))
+        ));
     }
 
-    #[test]
-    fn test_read_response_invalid_response() {
+    #[tokio::test]
+    async fn test_read_response_invalid_response() {
         let mut reader = Cursor::new([0, 1, 128, EOT]);
         assert!(matches!(
-            read_response(&mut reader),
+            read_response(&mut reader).await,
             Err(Error::InvalidResponseEncoding(_))
         ));
     }
 
-    #[test]
-    fn test_make_request_with_eot_at_the_end() {
+    #[tokio::test]
+    async fn test_make_request_with_eot_at_the_end() {
         let mut bytes = "login".as_bytes().to_vec();
         bytes.push(EOT);
         bytes.extend_from_slice("user".as_bytes());
@@ -213,8 +236,8 @@ mod tests {
         ))
     }
 
-    #[test]
-    fn test_make_request_carriage_return() {
+    #[tokio::test]
+    async fn test_make_request_carriage_return() {
         let request = String::from("login user");
         let mut expected = (request.clone() + "\r\n").into_bytes();
         expected.push(EOT);
