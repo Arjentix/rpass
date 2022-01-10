@@ -34,7 +34,8 @@ impl Authorized {
     /// # use std::error::Error;
     /// use rpass::{session, key::Key, record::Record};
     ///
-    /// # fn main() -> std::result::Result<(), Box<dyn Error>> {
+    /// # #[tokio::main]
+    /// # async fn main() -> std::result::Result<(), Box<dyn Error>> {
     /// let sec_key = Key::from_file("~/key.sec")?;
     /// let record = Record {
     ///     resource: String::from("example.com"),
@@ -42,9 +43,9 @@ impl Authorized {
     ///     notes: String::from("important notes")
     /// };
     ///
-    /// let mut session = session::Unauthorized::new("127.0.0.1:3747")?;
-    /// let mut session = session.login("user", &sec_key)?;
-    /// session.add_record(&record)?;
+    /// let mut session = session::Unauthorized::new("127.0.0.1:3747").await?;
+    /// let mut session = session.login("user", &sec_key).await?;
+    /// session.add_record(&record).await?;
     /// # Ok(())
     /// # }
     /// ```
@@ -71,18 +72,18 @@ impl Authorized {
     ///
     /// ```
     /// use rpass::session::Authorized;
-    /// use std::io;
+    /// use tokio::io::{AsyncBufReadExt, BufReader, stdin};
     /// use std::error::Error;
     ///
-    /// fn read_resource_and_delete(session: &mut Authorized) -> Result<(), Box<dyn Error>> {
+    /// async fn read_resource_and_delete(session: &mut Authorized) -> Result<(), Box<dyn Error>> {
     ///     let resource = {
     ///         let mut buffer = String::new();
-    ///         let mut stdin = io::stdin();
-    ///         stdin.read_line(&mut buffer)?;
+    ///         let mut stdin = BufReader::new(stdin());
+    ///         stdin.read_line(&mut buffer).await?;
     ///         buffer
     ///     };
     ///
-    ///     session.delete_record(&resource).map_err(|err| err.into())
+    ///     session.delete_record(&resource).await.map_err(|err| err.into())
     /// }
     /// ```
     pub async fn delete_record(&mut self, resource: &str) -> Result<()> {
@@ -111,7 +112,7 @@ impl Authorized {
     /// use std::io;
     /// use std::error::Error;
     ///
-    /// fn read_resource_and_show_record(session: &Authorized) -> Result<(), Box<dyn Error>> {
+    /// async fn read_resource_and_show_record(session: &Authorized) -> Result<(), Box<dyn Error>> {
     ///     let resource = {
     ///         let mut buffer = String::new();
     ///         let mut stdin = io::stdin();
@@ -119,7 +120,7 @@ impl Authorized {
     ///         buffer
     ///     };
     ///
-    ///     let record = session.get_record(resource)?;
+    ///     let record = session.get_record(resource).await?;
     ///     println!("{}", record.to_string());
     ///     Ok(())
     /// }
@@ -156,8 +157,8 @@ impl Authorized {
     /// use std::io;
     /// use std::error::Error;
     ///
-    /// fn print_all_records(session: &Authorized) -> Result<(), Box<dyn Error>> {
-    ///     let records = session.get_records_list()?;
+    /// async fn print_all_records(session: &Authorized) -> Result<(), Box<dyn Error>> {
+    ///     let records = session.get_records_list().await?;
     ///     for record in records.into_iter().enumerate() {
     ///         println!("{}: {}", record.0 + 1, record.1);
     ///     }
@@ -194,16 +195,25 @@ impl Authorized {
     ///
     /// # Example
     ///
-    /// ```no_run
-    /// # use std::error::Error;
-    /// use rpass::{session, key::Key};
+    /// ```
+    /// use rpass::session::{Authorized, Unauthorized};
+    /// use tokio::io::{AsyncBufReadExt, BufReader, stdin};
     ///
-    /// # fn main() -> std::result::Result<(), Box<dyn Error>> {
-    /// let sec_key = Key::from_file("~/key.sec")?;
-    /// let mut session = session::Unauthorized::new("127.0.0.1:3747")?;
-    /// session = session.login("user", &sec_key)?.delete_me()?;
-    /// # Ok(())
-    /// # }
+    /// async fn delete_user(authorized: Authorized) -> Result<Unauthorized, Authorized> {
+    ///     println!("Deleting user... Are you sure?");
+    ///     let mut buffer = String::new();
+    ///     let mut stdin = BufReader::new(stdin());
+    ///
+    ///     if let Err(_) = stdin.read_line(&mut buffer).await {
+    ///         return Err(authorized);
+    ///     }
+    ///
+    ///     if buffer == "Yes" {
+    ///         return authorized.delete_me().await.map_err(|err| err.authorized);
+    ///     }
+    ///
+    ///     Err(authorized)
+    /// }
     /// ```
     pub async fn delete_me(mut self) -> std::result::Result<Unauthorized, DeleteMeError> {
         match self.try_delete_me().await {

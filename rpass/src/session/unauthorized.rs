@@ -53,10 +53,11 @@ impl Unauthorized {
     /// # use std::error::Error;
     /// use rpass::{session, key::Key};
     ///
-    /// # fn main() -> std::result::Result<(), Box<dyn Error>> {
+    /// # #[tokio::main]
+    /// # async fn main() -> std::result::Result<(), Box<dyn Error>> {
     /// let pub_key = Key::from_file("~/pub.sec")?;
-    /// let mut session = session::Unauthorized::new("127.0.0.1:3747")?;
-    /// session.register("user", &pub_key)?;
+    /// let mut session = session::Unauthorized::new("127.0.0.1:3747").await?;
+    /// session.register("user", &pub_key).await?;
     /// println!("Successfully registered new user");
     /// # Ok(())
     /// # }
@@ -89,10 +90,11 @@ impl Unauthorized {
     /// # use std::error::Error;
     /// use rpass::{session, key::Key};
     ///
-    /// # fn main() -> std::result::Result<(), Box<dyn Error>> {
+    /// # #[tokio::main]
+    /// # async fn main() -> std::result::Result<(), Box<dyn Error>> {
     /// let sec_key = Key::from_file("~/key.sec")?;
-    /// let session = session::Unauthorized::new("127.0.0.1:3747")?;
-    /// let session = session.login("user", &sec_key)?;
+    /// let session = session::Unauthorized::new("127.0.0.1:3747").await?;
+    /// let session = session.login("user", &sec_key).await?;
     /// println!("Successfully logged in");
     /// # Ok(())
     /// # }
