@@ -48,13 +48,13 @@ impl Authorized {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn add_record(&mut self, record: &Record) -> Result<()> {
+    pub async fn add_record(&mut self, record: &Record) -> Result<()> {
         Self::check_resource(&record.resource)?;
 
         let request = format!("new_record {} \"{}\"", record.resource, record.to_string());
-        self.connector.get_mut().send_request(request)?;
+        self.connector.get_mut().send_request(request).await?;
 
-        self.read_ok_response()
+        self.read_ok_response().await
     }
 
     /// Deletes record with `resource` name
@@ -85,13 +85,13 @@ impl Authorized {
     ///     session.delete_record(&resource).map_err(|err| err.into())
     /// }
     /// ```
-    pub fn delete_record(&mut self, resource: &str) -> Result<()> {
+    pub async fn delete_record(&mut self, resource: &str) -> Result<()> {
         Self::check_resource(resource)?;
 
         let request = format!("delete_record {}", resource);
-        self.connector.get_mut().send_request(request)?;
+        self.connector.get_mut().send_request(request).await?;
 
-        self.read_ok_response()
+        self.read_ok_response().await
     }
 
     /// Get record with `resource` name
@@ -124,14 +124,14 @@ impl Authorized {
     ///     Ok(())
     /// }
     /// ```
-    pub fn get_record(&self, resource: String) -> Result<Record> {
+    pub async fn get_record(&self, resource: String) -> Result<Record> {
         Self::check_resource(&resource)?;
 
         let response = {
             let request = format!("show_record {}", resource);
             let mut connector = self.connector.borrow_mut();
-            connector.send_request(request)?;
-            utils::read_good_response(&mut connector)?
+            connector.send_request(request).await?;
+            utils::read_good_response(&mut connector).await?
         };
 
         Ok(Record {
@@ -164,11 +164,11 @@ impl Authorized {
     ///     Ok(())
     /// }
     /// ```
-    pub fn get_records_list(&self) -> Result<Vec<String>> {
+    pub async fn get_records_list(&self) -> Result<Vec<String>> {
         let response = {
             let mut connector = self.connector.borrow_mut();
-            connector.send_request(String::from("list_records"))?;
-            utils::read_good_response(&mut connector)?
+            connector.send_request(String::from("list_records")).await?;
+            utils::read_good_response(&mut connector).await?
         };
 
         if response == "No records yet" {
@@ -205,8 +205,8 @@ impl Authorized {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn delete_me(mut self) -> std::result::Result<Unauthorized, DeleteMeError> {
-        match self.try_delete_me() {
+    pub async fn delete_me(mut self) -> std::result::Result<Unauthorized, DeleteMeError> {
+        match self.try_delete_me().await {
             Ok(()) => Ok(Unauthorized::with_connector(self.connector.into_inner())),
             Err(err) => Err(DeleteMeError {
                 source: err,
@@ -218,11 +218,12 @@ impl Authorized {
     /// Tries to delete information about user the session is associated with
     ///
     /// See [`Authorized::login()`] for details
-    fn try_delete_me(&mut self) -> Result<()> {
+    async fn try_delete_me(&mut self) -> Result<()> {
         self.connector
             .get_mut()
-            .send_request(String::from("delete_me"))?;
-        self.read_ok_response()
+            .send_request(String::from("delete_me"))
+            .await?;
+        self.read_ok_response().await
     }
 
     /// Checks if `resource` is empty
@@ -241,8 +242,8 @@ impl Authorized {
     }
 
     /// See [`utils::read_ok_response()`]
-    fn read_ok_response(&mut self) -> Result<()> {
-        utils::read_ok_response(self.connector.get_mut())
+    async fn read_ok_response(&mut self) -> Result<()> {
+        utils::read_ok_response(self.connector.get_mut()).await
     }
 }
 
@@ -256,19 +257,19 @@ mod tests {
     mod add_record {
         use super::*;
 
-        #[test]
-        fn test_ok() {
+        #[tokio::test]
+        async fn test_ok() {
             let record = build_record();
 
             let mut connector = Connector::default();
             expect_all_ok(&mut connector, build_request(&record));
 
             let mut authorized = Authorized::new(connector);
-            authorized.add_record(&record).unwrap();
+            authorized.add_record(&record).await.unwrap();
         }
 
-        #[test]
-        fn test_invalid_resource() {
+        #[tokio::test]
+        async fn test_invalid_resource() {
             let record = Record {
                 resource: String::default(),
                 password: String::from("secret"),
@@ -279,24 +280,27 @@ mod tests {
 
             let mut authorized = Authorized::new(connector);
             assert!(matches!(
-                authorized.add_record(&record),
+                authorized.add_record(&record).await,
                 Err(Error::InvalidResource { .. })
             ));
         }
 
-        #[test]
-        fn test_cant_send_request() {
+        #[tokio::test]
+        async fn test_cant_send_request() {
             let record = build_record();
 
             let mut connector = Connector::default();
             expect_failing_send_request(&mut connector, build_request(&record));
 
             let mut authorized = Authorized::new(connector);
-            assert!(matches!(authorized.add_record(&record), Err(Error::Io(_))));
+            assert!(matches!(
+                authorized.add_record(&record).await,
+                Err(Error::Io(_))
+            ));
         }
 
-        #[test]
-        fn test_cant_recv_response() {
+        #[tokio::test]
+        async fn test_cant_recv_response() {
             let record = build_record();
 
             let mut connector = Connector::default();
@@ -304,13 +308,13 @@ mod tests {
 
             let mut authorized = Authorized::new(connector);
             assert!(matches!(
-                authorized.add_record(&record),
+                authorized.add_record(&record).await,
                 Err(Error::InvalidResponseEncoding(_))
             ));
         }
 
-        #[test]
-        fn test_unexpected_response() {
+        #[tokio::test]
+        async fn test_unexpected_response() {
             let record = build_record();
 
             let mut connector = Connector::default();
@@ -322,7 +326,7 @@ mod tests {
 
             let mut authorized = Authorized::new(connector);
             assert!(matches!(
-                authorized.add_record(&record),
+                authorized.add_record(&record).await,
                 Err(Error::UnexpectedResponse { response })
                     if response == "Record successfully added"
             ));
@@ -347,32 +351,32 @@ mod tests {
     mod delete_record {
         use super::*;
 
-        #[test]
-        fn test_ok() {
+        #[tokio::test]
+        async fn test_ok() {
             let resource = "test_resource";
 
             let mut connector = Connector::default();
             expect_all_ok(&mut connector, String::from("delete_record test_resource"));
 
             let mut authorized = Authorized::new(connector);
-            authorized.delete_record(resource).unwrap();
+            authorized.delete_record(resource).await.unwrap();
         }
 
-        #[test]
-        fn test_invalid_resource() {
+        #[tokio::test]
+        async fn test_invalid_resource() {
             let resource = "";
 
             let connector = Connector::default();
 
             let mut authorized = Authorized::new(connector);
             assert!(matches!(
-                authorized.delete_record(resource),
+                authorized.delete_record(resource).await,
                 Err(Error::InvalidResource { .. })
             ));
         }
 
-        #[test]
-        fn test_cant_send_request() {
+        #[tokio::test]
+        async fn test_cant_send_request() {
             let resource = "test_resource";
 
             let mut connector = Connector::default();
@@ -383,13 +387,13 @@ mod tests {
 
             let mut authorized = Authorized::new(connector);
             assert!(matches!(
-                authorized.delete_record(resource),
+                authorized.delete_record(resource).await,
                 Err(Error::Io(_))
             ));
         }
 
-        #[test]
-        fn test_cant_recv_response() {
+        #[tokio::test]
+        async fn test_cant_recv_response() {
             let resource = "test_resource";
 
             let mut connector = Connector::default();
@@ -400,13 +404,13 @@ mod tests {
 
             let mut authorized = Authorized::new(connector);
             assert!(matches!(
-                authorized.delete_record(resource),
+                authorized.delete_record(resource).await,
                 Err(Error::InvalidResponseEncoding(_))
             ));
         }
 
-        #[test]
-        fn test_unexpected_response() {
+        #[tokio::test]
+        async fn test_unexpected_response() {
             let resource = "test_resource";
 
             let mut connector = Connector::default();
@@ -418,7 +422,7 @@ mod tests {
 
             let mut authorized = Authorized::new(connector);
             assert!(matches!(
-                authorized.delete_record(resource),
+                authorized.delete_record(resource).await,
                 Err(Error::UnexpectedResponse { response })
                     if response == "Record successfully deleted"
             ));
@@ -429,8 +433,8 @@ mod tests {
     mod get_record {
         use super::*;
 
-        #[test]
-        fn test_ok() {
+        #[tokio::test]
+        async fn test_ok() {
             let resource = "test_resource";
 
             let record = Record {
@@ -448,35 +452,41 @@ mod tests {
                 .return_once(move || Ok(record_str));
 
             let authorized = Authorized::new(connector);
-            assert_eq!(authorized.get_record(resource.to_string()).unwrap(), record);
+            assert_eq!(
+                authorized.get_record(resource.to_string()).await.unwrap(),
+                record
+            );
         }
 
-        #[test]
-        fn test_invalid_resource() {
+        #[tokio::test]
+        async fn test_invalid_resource() {
             let resource = String::default();
 
             let connector = Connector::default();
 
             let authorized = Authorized::new(connector);
             assert!(matches!(
-                authorized.get_record(resource),
+                authorized.get_record(resource).await,
                 Err(Error::InvalidResource { .. })
             ));
         }
 
-        #[test]
-        fn test_cant_send_request() {
+        #[tokio::test]
+        async fn test_cant_send_request() {
             let resource = String::from("test_resource");
 
             let mut connector = Connector::default();
             expect_failing_send_request(&mut connector, format!("show_record {}", resource));
 
             let authorized = Authorized::new(connector);
-            assert!(matches!(authorized.get_record(resource), Err(Error::Io(_))));
+            assert!(matches!(
+                authorized.get_record(resource).await,
+                Err(Error::Io(_))
+            ));
         }
 
-        #[test]
-        fn test_cant_recv_response() {
+        #[tokio::test]
+        async fn test_cant_recv_response() {
             let resource = String::from("test_resource");
 
             let mut connector = Connector::default();
@@ -484,13 +494,13 @@ mod tests {
 
             let authorized = Authorized::new(connector);
             assert!(matches!(
-                authorized.get_record(resource),
+                authorized.get_record(resource).await,
                 Err(Error::InvalidResponseEncoding(_))
             ));
         }
 
-        #[test]
-        fn test_error_from_server() {
+        #[tokio::test]
+        async fn test_error_from_server() {
             let resource = String::from("test_resource");
 
             let mut connector = Connector::default();
@@ -502,13 +512,13 @@ mod tests {
 
             let authorized = Authorized::new(connector);
             assert!(matches!(
-                authorized.get_record(resource),
+                authorized.get_record(resource).await,
                 Err(Error::Server { mes }) if mes == "no such record"
             ));
         }
 
-        #[test]
-        fn test_wrong_record_format() {
+        #[tokio::test]
+        async fn test_wrong_record_format() {
             let resource = String::from("test_resource");
 
             let mut connector = Connector::default();
@@ -520,7 +530,7 @@ mod tests {
 
             let authorized = Authorized::new(connector);
             assert!(matches!(
-                authorized.get_record(resource),
+                authorized.get_record(resource).await,
                 Err(Error::CantParseRecord(_))
             ));
         }
@@ -530,8 +540,8 @@ mod tests {
     mod get_records_list {
         use super::*;
 
-        #[test]
-        fn test_ok() {
+        #[tokio::test]
+        async fn test_ok() {
             let mut connector = Connector::default();
             expect_ok_send_request(&mut connector, String::from("list_records"));
             connector
@@ -545,11 +555,11 @@ mod tests {
                 .collect();
 
             let authorized = Authorized::new(connector);
-            assert_eq!(authorized.get_records_list().unwrap(), expected_list);
+            assert_eq!(authorized.get_records_list().await.unwrap(), expected_list);
         }
 
-        #[test]
-        fn test_no_records() {
+        #[tokio::test]
+        async fn test_no_records() {
             let mut connector = Connector::default();
             expect_ok_send_request(&mut connector, String::from("list_records"));
             connector
@@ -558,32 +568,35 @@ mod tests {
                 .return_once(move || Ok(String::from("No records yet")));
 
             let authorized = Authorized::new(connector);
-            assert!(authorized.get_records_list().unwrap().is_empty());
+            assert!(authorized.get_records_list().await.unwrap().is_empty());
         }
 
-        #[test]
-        fn test_cant_send_request() {
+        #[tokio::test]
+        async fn test_cant_send_request() {
             let mut connector = Connector::default();
             expect_failing_send_request(&mut connector, String::from("list_records"));
 
             let authorized = Authorized::new(connector);
-            assert!(matches!(authorized.get_records_list(), Err(Error::Io(_))));
+            assert!(matches!(
+                authorized.get_records_list().await,
+                Err(Error::Io(_))
+            ));
         }
 
-        #[test]
-        fn test_cant_recv_response() {
+        #[tokio::test]
+        async fn test_cant_recv_response() {
             let mut connector = Connector::default();
             expect_failing_recv_response(&mut connector, String::from("list_records"));
 
             let authorized = Authorized::new(connector);
             assert!(matches!(
-                authorized.get_records_list(),
+                authorized.get_records_list().await,
                 Err(Error::InvalidResponseEncoding(_))
             ));
         }
 
-        #[test]
-        fn test_error_from_server() {
+        #[tokio::test]
+        async fn test_error_from_server() {
             let mut connector = Connector::default();
             expect_ok_send_request(&mut connector, String::from("list_records"));
             connector
@@ -593,7 +606,7 @@ mod tests {
 
             let authorized = Authorized::new(connector);
             assert!(matches!(
-                authorized.get_records_list(),
+                authorized.get_records_list().await,
                 Err(Error::Server { mes }) if mes == "some internal error"
             ));
         }
@@ -603,23 +616,23 @@ mod tests {
     mod delete_me {
         use super::*;
 
-        #[test]
-        fn test_ok() {
+        #[tokio::test]
+        async fn test_ok() {
             let mut connector = Connector::default();
             expect_all_ok(&mut connector, String::from("delete_me"));
 
             let authorized = Authorized::new(connector);
-            authorized.delete_me().unwrap();
+            authorized.delete_me().await.unwrap();
         }
 
-        #[test]
-        fn test_cant_send_request() {
+        #[tokio::test]
+        async fn test_cant_send_request() {
             let mut connector = Connector::default();
             expect_failing_send_request(&mut connector, String::from("delete_me"));
 
             let authorized = Authorized::new(connector);
             assert!(matches!(
-                authorized.delete_me(),
+                authorized.delete_me().await,
                 Err(DeleteMeError {
                     source: Error::Io(_),
                     ..
@@ -627,14 +640,14 @@ mod tests {
             ));
         }
 
-        #[test]
-        fn test_cant_recv_response() {
+        #[tokio::test]
+        async fn test_cant_recv_response() {
             let mut connector = Connector::default();
             expect_failing_recv_response(&mut connector, String::from("delete_me"));
 
             let authorized = Authorized::new(connector);
             assert!(matches!(
-                authorized.delete_me(),
+                authorized.delete_me().await,
                 Err(DeleteMeError {
                     source: Error::InvalidResponseEncoding(_),
                     ..
@@ -642,8 +655,8 @@ mod tests {
             ));
         }
 
-        #[test]
-        fn test_unexpected_response() {
+        #[tokio::test]
+        async fn test_unexpected_response() {
             let mut connector = Connector::default();
             expect_ok_send_request(&mut connector, String::from("delete_me"));
             connector
@@ -653,7 +666,7 @@ mod tests {
 
             let authorized = Authorized::new(connector);
             assert!(matches!(
-                authorized.delete_me(),
+                authorized.delete_me().await,
                 Err(DeleteMeError {
                     source: Error::UnexpectedResponse { response },
                     ..
