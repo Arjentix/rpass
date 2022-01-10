@@ -14,7 +14,7 @@ use mockall::automock;
 /// Connector that interacts with *rpass_db*
 #[derive(Debug)]
 pub struct Connector {
-    stream: Box<TcpStream>,
+    _stream: Box<TcpStream>,
     reader: BufReader<tcp::ReadHalf<'static>>,
     writer: tcp::WriteHalf<'static>,
     server_pub_key: Key,
@@ -23,7 +23,7 @@ pub struct Connector {
 /// End of transmission character
 const EOT: u8 = 0x04;
 
-#[cfg_attr(test, automock)]
+#[cfg_attr(test, automock, allow(dead_code))]
 impl Connector {
     /// Creates new Connector
     ///
@@ -41,7 +41,7 @@ impl Connector {
         let mut reader = BufReader::new(reader);
         let server_pub_key = Self::read_server_pub_key(&mut reader).await?;
         Ok(Connector {
-            stream,
+            _stream: stream,
             reader,
             writer,
             server_pub_key,
@@ -90,9 +90,11 @@ impl Connector {
 /// Gracefully disconnects from server
 impl Drop for Connector {
     fn drop(&mut self) {
-        async {
-            let _ = self.send_request(String::from("quit")).await;
-        };
+        if let Ok(runtime) = tokio::runtime::Runtime::new() {
+            runtime.block_on(async {
+                let _ = self.send_request(String::from("quit")).await;
+            });
+        }
     }
 }
 
@@ -168,8 +170,8 @@ mod tests {
     impl AsyncRead for TestReader {
         fn poll_read(
             self: std::pin::Pin<&mut Self>,
-            cx: &mut std::task::Context<'_>,
-            buf: &mut tokio::io::ReadBuf<'_>,
+            _cx: &mut std::task::Context<'_>,
+            _buf: &mut tokio::io::ReadBuf<'_>,
         ) -> Poll<std::io::Result<()>> {
             Poll::Ready(Err(std::io::Error::new(
                 std::io::ErrorKind::Other,
