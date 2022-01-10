@@ -1,6 +1,8 @@
 use super::{utils, Authorized, Connector, Error, LoginError, Result};
+
 use crate::key::Key;
-use std::net::{TcpStream, ToSocketAddrs};
+
+use tokio::net::{TcpStream, ToSocketAddrs};
 
 /// Unauthorized session
 ///
@@ -21,9 +23,13 @@ impl Unauthorized {
     /// * `Io` - if can't read bytes from server
     /// * `InvalidResponseEncoding` - if response isn't UTF-8 encoded
     /// * `InvalidKey` - if can't parse server key
-    pub fn new<A: ToSocketAddrs>(addr: A) -> Result<Self> {
-        let stream = TcpStream::connect(addr).map_err(|_| Error::CantConnectToTheServer)?;
-        let connector = Connector::new(stream)?;
+    pub async fn new<A: ToSocketAddrs>(addr: A) -> Result<Self> {
+        let stream = Box::new(
+            TcpStream::connect(addr)
+                .await
+                .map_err(|_| Error::CantConnectToTheServer)?,
+        );
+        let connector = Connector::new(stream).await?;
         Ok(Unauthorized { connector })
     }
 
@@ -55,11 +61,11 @@ impl Unauthorized {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn register(&mut self, username: &str, pub_key: &Key) -> Result<()> {
+    pub async fn register(&mut self, username: &str, pub_key: &Key) -> Result<()> {
         let register_request = format!("register {} {}", username, pub_key.to_string());
-        self.connector.send_request(register_request)?;
+        self.connector.send_request(register_request).await?;
 
-        utils::read_ok_response(&mut self.connector)
+        utils::read_ok_response(&mut self.connector).await
     }
 
     /// Attempts to log in to the server with `username` name.
@@ -91,12 +97,12 @@ impl Unauthorized {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn login(
+    pub async fn login(
         mut self,
         username: &str,
         sec_key: &Key,
     ) -> std::result::Result<Authorized, LoginError> {
-        match self.try_login(username, sec_key) {
+        match self.try_login(username, sec_key).await {
             Ok(()) => Ok(Authorized::new(self.connector)),
             Err(err) => Err(LoginError {
                 source: err,
@@ -108,19 +114,19 @@ impl Unauthorized {
     /// Tries to log in to the server
     ///
     /// See [`Unauthorized::login()`] for details
-    fn try_login(&mut self, username: &str, sec_key: &Key) -> Result<()> {
+    async fn try_login(&mut self, username: &str, sec_key: &Key) -> Result<()> {
         let login_request = format!("login {}", username);
-        self.connector.send_request(login_request)?;
+        self.connector.send_request(login_request).await?;
 
-        let login_response = utils::read_good_response(&mut self.connector)?;
+        let login_response = utils::read_good_response(&mut self.connector).await?;
 
         let confirmation = sec_key.decrypt(&login_response);
         let encrypted_confirmation = self.connector.server_pub_key().encrypt(&confirmation);
 
         let confirm_login_request = format!("confirm_login {}", encrypted_confirmation);
-        self.connector.send_request(confirm_login_request)?;
+        self.connector.send_request(confirm_login_request).await?;
 
-        utils::read_ok_response(&mut self.connector)
+        utils::read_ok_response(&mut self.connector).await
     }
 }
 
@@ -139,8 +145,8 @@ mod tests {
 
         const TEST_USER: &str = "test_user";
 
-        #[test]
-        fn test_ok() {
+        #[tokio::test]
+        async fn test_ok() {
             let (_, pub_key, _) = generate_keys();
             let mut connector = Connector::default();
             connector
@@ -158,11 +164,11 @@ mod tests {
                 .returning(|| Ok(String::from("Ok")));
 
             let mut unauthorized = Unauthorized { connector };
-            unauthorized.register(TEST_USER, &pub_key).unwrap();
+            unauthorized.register(TEST_USER, &pub_key).await.unwrap();
         }
 
-        #[test]
-        fn test_cant_send_request() {
+        #[tokio::test]
+        async fn test_cant_send_request() {
             let (_, pub_key, _) = generate_keys();
             let mut connector = Connector::default();
             connector
@@ -177,13 +183,13 @@ mod tests {
 
             let mut unauthorized = Unauthorized { connector };
             assert!(matches!(
-                unauthorized.register(TEST_USER, &pub_key),
+                unauthorized.register(TEST_USER, &pub_key).await,
                 Err(Error::Io(_))
             ));
         }
 
-        #[test]
-        fn test_cant_recv_response() {
+        #[tokio::test]
+        async fn test_cant_recv_response() {
             let (_, pub_key, _) = generate_keys();
             let mut connector = Connector::default();
             connector
@@ -203,13 +209,13 @@ mod tests {
 
             let mut unauthorized = Unauthorized { connector };
             assert!(matches!(
-                unauthorized.register(TEST_USER, &pub_key),
+                unauthorized.register(TEST_USER, &pub_key).await,
                 Err(Error::InvalidResponseEncoding(_))
             ));
         }
 
-        #[test]
-        fn test_unexpected_response() {
+        #[tokio::test]
+        async fn test_unexpected_response() {
             let (_, pub_key, _) = generate_keys();
             let mut connector = Connector::default();
             connector
@@ -228,7 +234,7 @@ mod tests {
 
             let mut unauthorized = Unauthorized { connector };
             assert!(matches!(
-                unauthorized.register(TEST_USER, &pub_key),
+                unauthorized.register(TEST_USER, &pub_key).await,
                 Err(Error::UnexpectedResponse { response }) if response == "Registered"
             ));
         }
@@ -246,8 +252,8 @@ mod tests {
         const TEST_USER: &str = "test_user";
         const CONFIRMATION: &str = "confirmation";
 
-        #[test]
-        fn test_ok() {
+        #[tokio::test]
+        async fn test_ok() {
             let (server_pub_key, pub_key, sec_key) = generate_keys();
             let send_request_arg_validator = {
                 let expected_confirmation =
@@ -261,11 +267,11 @@ mod tests {
             expect_recv_response(&mut connector, pub_key);
 
             let unauthorized = Unauthorized { connector };
-            unauthorized.login(TEST_USER, &sec_key).unwrap();
+            unauthorized.login(TEST_USER, &sec_key).await.unwrap();
         }
 
-        #[test]
-        fn test_cant_send_login_request() {
+        #[tokio::test]
+        async fn test_cant_send_login_request() {
             let (_, _, sec_key) = generate_keys();
             let mut connector = Connector::default();
             connector
@@ -276,7 +282,7 @@ mod tests {
 
             let unauthorized = Unauthorized { connector };
             assert!(matches!(
-                unauthorized.login(TEST_USER, &sec_key),
+                unauthorized.login(TEST_USER, &sec_key).await,
                 Err(LoginError {
                     source: Error::Io(_),
                     ..
@@ -284,8 +290,8 @@ mod tests {
             ));
         }
 
-        #[test]
-        fn test_cant_recv_login_response() {
+        #[tokio::test]
+        async fn test_cant_recv_login_response() {
             let (_, _, sec_key) = generate_keys();
             let mut connector = Connector::default();
             connector
@@ -301,7 +307,7 @@ mod tests {
 
             let unauthorized = Unauthorized { connector };
             assert!(matches!(
-                unauthorized.login(TEST_USER, &sec_key),
+                unauthorized.login(TEST_USER, &sec_key).await,
                 Err(LoginError {
                     source: Error::InvalidResponseEncoding(_),
                     ..
@@ -309,8 +315,8 @@ mod tests {
             ));
         }
 
-        #[test]
-        fn test_error_in_login_response() {
+        #[tokio::test]
+        async fn test_error_in_login_response() {
             let (_, _, sec_key) = generate_keys();
             let mut connector = Connector::default();
             connector
@@ -325,7 +331,7 @@ mod tests {
 
             let unauthorized = Unauthorized { connector };
             assert!(matches!(
-                unauthorized.login(TEST_USER, &sec_key),
+                unauthorized.login(TEST_USER, &sec_key).await,
                 Err(LoginError {
                     source: Error::Server { .. },
                     ..
@@ -333,8 +339,8 @@ mod tests {
             ));
         }
 
-        #[test]
-        fn test_cant_send_confirm_login_request() {
+        #[tokio::test]
+        async fn test_cant_send_confirm_login_request() {
             let (server_pub_key, pub_key, sec_key) = generate_keys();
             let send_response_call_counter = Rc::new(Cell::new(0u8));
             let send_request_arg_validator = {
@@ -370,7 +376,7 @@ mod tests {
 
             let unauthorized = Unauthorized { connector };
             assert!(matches!(
-                unauthorized.login(TEST_USER, &sec_key),
+                unauthorized.login(TEST_USER, &sec_key).await,
                 Err(LoginError {
                     source: Error::Io(_),
                     ..
@@ -378,8 +384,8 @@ mod tests {
             ));
         }
 
-        #[test]
-        fn test_cant_recv_confirm_login_response() {
+        #[tokio::test]
+        async fn test_cant_recv_confirm_login_response() {
             let (server_pub_key, pub_key, sec_key) = generate_keys();
             let send_request_arg_validator = {
                 let expected_confirmation =
@@ -405,7 +411,7 @@ mod tests {
 
             let unauthorized = Unauthorized { connector };
             assert!(matches!(
-                unauthorized.login(TEST_USER, &sec_key),
+                unauthorized.login(TEST_USER, &sec_key).await,
                 Err(LoginError {
                     source: Error::Io(_),
                     ..
@@ -413,8 +419,8 @@ mod tests {
             ));
         }
 
-        #[test]
-        fn test_error_in_confirm_login_response() {
+        #[tokio::test]
+        async fn test_error_in_confirm_login_response() {
             let (server_pub_key, pub_key, sec_key) = generate_keys();
             let send_request_arg_validator = {
                 let expected_confirmation =
@@ -440,7 +446,7 @@ mod tests {
 
             let unauthorized = Unauthorized { connector };
             assert!(matches!(
-                unauthorized.login(TEST_USER, &sec_key),
+                unauthorized.login(TEST_USER, &sec_key).await,
                 Err(LoginError {
                     source: Error::Server { mes },
                     ..
@@ -448,8 +454,8 @@ mod tests {
             ));
         }
 
-        #[test]
-        fn test_unexpected_confirm_login_response() {
+        #[tokio::test]
+        async fn test_unexpected_confirm_login_response() {
             let (server_pub_key, pub_key, sec_key) = generate_keys();
             let send_request_arg_validator = {
                 let expected_confirmation =
@@ -475,7 +481,7 @@ mod tests {
 
             let unauthorized = Unauthorized { connector };
             assert!(matches!(
-                unauthorized.login(TEST_USER, &sec_key),
+                unauthorized.login(TEST_USER, &sec_key).await,
                 Err(LoginError {
                     source: Error::UnexpectedResponse { response},
                     ..
