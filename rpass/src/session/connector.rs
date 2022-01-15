@@ -87,17 +87,6 @@ impl Connector {
     }
 }
 
-/// Gracefully disconnects from server
-impl Drop for Connector {
-    fn drop(&mut self) {
-        if let Ok(runtime) = tokio::runtime::Runtime::new() {
-            runtime.block_on(async {
-                let _ = self.send_request(String::from("quit")).await;
-            });
-        }
-    }
-}
-
 /// Reads response from `reader`
 ///
 /// Returns response without EOT byte and "\r\n" ending if there is some
