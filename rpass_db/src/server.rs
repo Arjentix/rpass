@@ -81,8 +81,14 @@ impl Server {
 
         self.send_storage_key(stream)?;
 
-        while !session.is_ended() {
-            let bytes = Self::read_request_bytes(&mut reader)?;
+        loop {
+            let bytes = match Self::read_request_bytes(&mut reader) {
+                Ok(bytes) => bytes,
+                Err(err) => match err.kind() {
+                    io::ErrorKind::ConnectionAborted => return Ok(()),
+                    _ => return Err(err),
+                },
+            };
             let request = String::from_utf8(bytes);
 
             let response = match request {
@@ -96,8 +102,6 @@ impl Server {
 
             stream.write_all(&Self::response_to_bytes(response))?;
         }
-
-        Ok(())
     }
 
     /// Sends storage pub key to the `stream`
@@ -130,7 +134,13 @@ impl Server {
     /// Returns bytes without EOT byte
     fn read_request_bytes<R: BufRead>(mut reader: R) -> Result<Vec<u8>> {
         let mut buf = vec![];
-        reader.read_until(Self::EOT, &mut buf)?;
+        let size = reader.read_until(Self::EOT, &mut buf)?;
+        if size == 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::ConnectionAborted,
+                "Client terminated the connection",
+            ));
+        }
         buf.pop();
 
         Ok(buf)

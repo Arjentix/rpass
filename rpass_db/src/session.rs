@@ -11,9 +11,6 @@ pub enum Session {
 
     /// Authorized session
     Authorized(Authorized),
-
-    /// Session, that still exists, but has been ended
-    Ended,
 }
 
 #[derive(Default)]
@@ -42,11 +39,6 @@ impl Session {
     /// Checks if session is authorized
     pub fn is_authorized(&self) -> bool {
         matches!(self, Session::Authorized(_))
-    }
-
-    /// Checks if session is ended
-    pub fn is_ended(&self) -> bool {
-        matches!(self, Session::Ended)
     }
 }
 

@@ -61,9 +61,6 @@ fn build_request_dispatcher(storage: Arc<RwLock<Storage>>) -> AsyncRequestDispat
             .add_callback(Cow::from("delete_me"), move |session, _| {
                 callbacks::delete_me(delete_me_storage.clone(), session).map_err(|err| err.into())
             })
-            .add_callback(Cow::from("quit"), |session, _| {
-                callbacks::quit(session).map_err(|err| err.into())
-            })
             .add_callback(Cow::from("new_record"), move |session, arg_iter| {
                 callbacks::new_record(session, arg_iter).map_err(|err| err.into())
             })

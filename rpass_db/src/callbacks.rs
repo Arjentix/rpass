@@ -5,7 +5,6 @@ mod error;
 mod list_records;
 mod login;
 mod new_record;
-mod quit;
 mod register;
 mod show_record;
 
@@ -19,7 +18,6 @@ pub use error::Error;
 pub use list_records::list_records;
 pub use login::login;
 pub use new_record::new_record;
-pub use quit::quit;
 pub use register::register;
 pub use show_record::show_record;
 pub type Result<T> = std::result::Result<T, Error>;
