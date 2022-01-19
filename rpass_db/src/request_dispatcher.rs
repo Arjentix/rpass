@@ -23,7 +23,7 @@ mod error {
         UndefinedCommand(Cow<'static, str>),
 
         #[error("callback error: {0}")]
-        CallbackError(#[from] callbacks::Error),
+        Callback(#[from] callbacks::Error),
     }
 }
 
