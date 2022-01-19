@@ -102,7 +102,10 @@ mod tests {
     #[test]
     fn test_session_is_ended() {
         let mock_storage = AsyncStorage::default();
-        let mut session = Session::Ended;
+        let mut session = Session::Authorized(Authorized {
+            username: String::from("test"),
+            user_storage: AsyncUserStorage::default(),
+        });
 
         let mut arg_iter = [""].iter().map(|&s| s.to_owned());
 
