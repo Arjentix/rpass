@@ -138,17 +138,14 @@ impl Storage {
         const DIRECTORY_MESSAGE_PREFIX: &str = "Rpass storage directory";
 
         if !path.exists() {
-            println!(
-                "{} {:?} does not exist. Creating...",
-                DIRECTORY_MESSAGE_PREFIX, path
-            );
+            println!("{DIRECTORY_MESSAGE_PREFIX} {path:?} does not exist. Creating...");
             fs::create_dir(path)?;
             return Self::init_keys(path);
         } else if !path.is_dir() {
             return Err(Error::StoragePathIsNotADirectory(path.to_owned()));
         }
 
-        println!("{} is {:?}", DIRECTORY_MESSAGE_PREFIX, path);
+        println!("{DIRECTORY_MESSAGE_PREFIX} is {path:?}");
         Ok(())
     }
 
