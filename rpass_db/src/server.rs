@@ -41,7 +41,7 @@ impl Server {
                 let stream = match stream_res {
                     Ok(connection) => connection,
                     Err(err) => {
-                        println!("Failed to connect: {}", err);
+                        println!("Failed to connect: {err}");
                         break;
                     }
                 };
@@ -93,9 +93,9 @@ impl Server {
 
             let response = match request {
                 Ok(request) => {
-                    let request_str = request.trim();
-                    println!("request = \"{}\"", request_str);
-                    self.dispatch_request(&mut session, request_str)
+                    let request = request.trim();
+                    println!("request = \"{request}\"");
+                    self.dispatch_request(&mut session, request)
                 }
                 Err(_) => "Error: request should be in UTF-8 format\r\n".to_owned(),
             };
@@ -170,7 +170,7 @@ enum ConnectionStatus {
 /// successful connection. Else prints info about disconnection
 fn log_connection(peer_addr: &str, connection: ConnectionStatus) {
     match connection {
-        ConnectionStatus::Connected => println!("Connected with {}", peer_addr),
-        ConnectionStatus::Disconnected => println!("Connection with {} closed", peer_addr),
+        ConnectionStatus::Connected => println!("Connected with {peer_addr}"),
+        ConnectionStatus::Disconnected => println!("Connection with {peer_addr} closed"),
     }
 }
