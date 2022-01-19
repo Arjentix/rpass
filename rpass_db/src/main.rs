@@ -49,29 +49,28 @@ fn build_request_dispatcher(storage: Arc<RwLock<Storage>>) -> AsyncRequestDispat
         let mut dispatcher_write = request_dispatcher.write().unwrap();
         dispatcher_write
             .add_callback(Cow::from("register"), move |_, arg_iter| {
-                callbacks::register(register_storage.clone(), arg_iter).map_err(|err| err.into())
+                callbacks::register(register_storage.clone(), arg_iter)
             })
             .add_callback(Cow::from("login"), move |session, arg_iter| {
-                callbacks::login(login_storage.clone(), session, arg_iter).map_err(|err| err.into())
+                callbacks::login(login_storage.clone(), session, arg_iter)
             })
             .add_callback(Cow::from("confirm_login"), move |session, arg_iter| {
                 callbacks::confirm_login(confirm_login_storage.clone(), session, arg_iter)
-                    .map_err(|err| err.into())
             })
             .add_callback(Cow::from("delete_me"), move |session, _| {
-                callbacks::delete_me(delete_me_storage.clone(), session).map_err(|err| err.into())
+                callbacks::delete_me(delete_me_storage.clone(), session)
             })
             .add_callback(Cow::from("new_record"), move |session, arg_iter| {
-                callbacks::new_record(session, arg_iter).map_err(|err| err.into())
+                callbacks::new_record(session, arg_iter)
             })
             .add_callback(Cow::from("show_record"), move |session, arg_iter| {
-                callbacks::show_record(session, arg_iter).map_err(|err| err.into())
+                callbacks::show_record(session, arg_iter)
             })
             .add_callback(Cow::from("list_records"), move |session, _| {
-                callbacks::list_records(session).map_err(|err| err.into())
+                callbacks::list_records(session)
             })
             .add_callback(Cow::from("delete_record"), move |session, arg_iter| {
-                callbacks::delete_record(session, arg_iter).map_err(|err| err.into())
+                callbacks::delete_record(session, arg_iter)
             });
     }
 
