@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 rpass = {path = "../rpass", version = "0.1.0"}
 crossbeam-utils = "0.8.5"
-dirs = "3.0.1"
+dirs = "4.0.0"
 thiserror = "1.0"
 anyhow = "1.0"
 rand = "0.8.4"
@@ -18,4 +18,4 @@ mockall_double = "0.2.0"
 enum-as-inner = "0.3.3"
 
 [dev-dependencies]
-mockall = "0.10.2"
+mockall = "0.11.0"
